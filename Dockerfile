@@ -5,6 +5,9 @@ WORKDIR /app
 # Install pnpm
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
+# Build tools needed for native modules (better-sqlite3)
+RUN apk add --no-cache python3 make g++
+
 # Copy workspace manifests
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml* ./
 COPY packages/backend/package.json ./packages/backend/
@@ -12,6 +15,9 @@ COPY packages/frontend/package.json ./packages/frontend/
 
 # Install all dependencies
 RUN pnpm install --frozen-lockfile
+
+# Compile native bindings for better-sqlite3
+RUN pnpm rebuild better-sqlite3
 
 # Copy source
 COPY packages/ ./packages/
