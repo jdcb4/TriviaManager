@@ -42,7 +42,7 @@ async function serveDownload(c: any, filename: string, contentType: string) {
   if (!data) {
     return c.json({ error: 'No published dataset yet. An admin must publish the dataset first.' }, 404)
   }
-  return new Response(data, {
+  return new Response(new Blob([data]), {
     headers: {
       'Content-Type': contentType,
       'Content-Disposition': `attachment; filename="${filename}"`,
