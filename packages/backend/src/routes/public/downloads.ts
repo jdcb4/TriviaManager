@@ -13,7 +13,7 @@ const app = new Hono()
 // Check that a published version exists, then ensure the file is on disk.
 // If the file is missing (e.g. after a container restart wipes the filesystem),
 // regenerate it on the fly from the database before serving.
-async function getOrGenerateFile(filename: string): Promise<Buffer | null> {
+async function getOrGenerateFile(filename: string): Promise<Uint8Array | null> {
   // Guard: only serve if at least one published version exists
   const latestVersion = await prisma.datasetVersion.findFirst({
     where: { publishedAt: { not: null } },
@@ -24,7 +24,7 @@ async function getOrGenerateFile(filename: string): Promise<Buffer | null> {
   const filePath = path.join(DOWNLOADS_DIR, filename)
 
   try {
-    return await fs.readFile(filePath)
+    return new Uint8Array(await fs.readFile(filePath))
   } catch {
     // File missing (container restart resets the filesystem) — regenerate from DB
     const questions = await prisma.question.findMany({
@@ -33,7 +33,7 @@ async function getOrGenerateFile(filename: string): Promise<Buffer | null> {
       orderBy: { id: 'asc' },
     })
     await generateDatasetFiles(questions as any)
-    return fs.readFile(filePath)
+    return new Uint8Array(await fs.readFile(filePath))
   }
 }
 
