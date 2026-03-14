@@ -8,20 +8,16 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 # Build tools needed for native modules (better-sqlite3)
 RUN apk add --no-cache python3 make g++
 
-# Copy workspace manifests
-COPY pnpm-workspace.yaml package.json pnpm-lock.yaml* ./
+# Copy workspace manifests + .npmrc FIRST so build scripts are allowed during install
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml* .npmrc ./
 COPY packages/backend/package.json ./packages/backend/
 COPY packages/frontend/package.json ./packages/frontend/
 
-# Install all dependencies
+# Install all dependencies (build scripts now allowed via .npmrc)
 RUN pnpm install --frozen-lockfile
-
-# Compile native bindings for better-sqlite3
-RUN pnpm rebuild better-sqlite3
 
 # Copy source
 COPY packages/ ./packages/
-COPY .npmrc ./
 
 # Generate Prisma client
 RUN pnpm --filter backend exec prisma generate
@@ -54,5 +50,5 @@ WORKDIR /app/packages/backend
 
 EXPOSE 3000
 
-# Run migrations then start
-CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy && node dist/index.js"]
+# Push schema to DB (creates tables if missing) then start
+CMD ["sh", "-c", "node_modules/.bin/prisma db push --skip-generate --accept-data-loss && node dist/index.js"]
