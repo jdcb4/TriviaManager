@@ -146,3 +146,17 @@ model AiTask {
 
   @@index([status])
 }
+
+model DuplicateScan {
+  id             String    @id @default(uuid())
+  status         String    @default("running") // running | done | failed | cancelled
+  totalQuestions Int       @default(0)
+  scannedCount   Int       @default(0)
+  results        Json?     // { pairs: DuplicatePair[] }
+  error          String?
+  createdAt      DateTime  @default(now())
+  completedAt    DateTime?
+
+  @@index([status])
+  @@index([createdAt])
+}

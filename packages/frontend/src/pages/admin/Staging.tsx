@@ -4,7 +4,7 @@ import { api, type StagedQuestion } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Select, Textarea } from '@/components/ui/input'
-import { Check, X, ChevronDown, ChevronUp } from 'lucide-react'
+import { Check, X, ChevronDown, ChevronUp, CheckCheck, XSquare } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 function StagedCard({ item, onApprove, onReject }: {
@@ -109,16 +109,66 @@ export default function Staging() {
     onError: () => toast.error('Failed to reject'),
   })
 
+  const approveAllMut = useMutation({
+    mutationFn: () => api.post('/api/admin/staging/approve-all'),
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ['staged'] })
+      toast.success(`Approved ${res.data.approved} question${res.data.approved !== 1 ? 's' : ''}${res.data.failed ? ` (${res.data.failed} failed)` : ''}`)
+    },
+    onError: () => toast.error('Bulk approve failed'),
+  })
+
+  const rejectAllMut = useMutation({
+    mutationFn: () => api.post('/api/admin/staging/reject-all', {}),
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ['staged'] })
+      toast.success(`Rejected ${res.data.rejected} question${res.data.rejected !== 1 ? 's' : ''}`)
+    },
+    onError: () => toast.error('Bulk reject failed'),
+  })
+
+  const pendingCount = staged?.filter(s => s.status === 'PENDING').length ?? 0
+  const showBulkActions = statusFilter === 'PENDING' && pendingCount > 1
+
   return (
     <div className="p-6 space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Staging & QA</h1>
-        <Select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="w-36">
-          <option value="">All</option>
-          <option value="PENDING">Pending</option>
-          <option value="APPROVED">Approved</option>
-          <option value="REJECTED">Rejected</option>
-        </Select>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-gray-900">Staging & QA</h1>
+          {pendingCount > 0 && (
+            <span className="text-sm text-gray-500">{pendingCount} pending</span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {showBulkActions && (
+            <>
+              <Button
+                size="sm"
+                variant="primary"
+                onClick={() => approveAllMut.mutate()}
+                loading={approveAllMut.isPending}
+              >
+                <CheckCheck size={14} className="mr-1" />
+                Approve All ({pendingCount})
+              </Button>
+              <Button
+                size="sm"
+                variant="danger"
+                onClick={() => rejectAllMut.mutate()}
+                loading={rejectAllMut.isPending}
+              >
+                <XSquare size={14} className="mr-1" />
+                Reject All ({pendingCount})
+              </Button>
+            </>
+          )}
+          <Select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="w-36">
+            <option value="">All</option>
+            <option value="PENDING">Pending</option>
+            <option value="APPROVED">Approved</option>
+            <option value="REJECTED">Rejected</option>
+          </Select>
+        </div>
       </div>
 
       {isLoading ? (

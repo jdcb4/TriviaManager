@@ -89,4 +89,68 @@ app.put('/:id', zValidator('json', z.object({ data: z.any(), aiNotes: z.string()
   return c.json(updated)
 })
 
+// Bulk approve all PENDING staged questions
+app.post('/approve-all', async (c) => {
+  const pending = await prisma.stagedQuestion.findMany({
+    where: { status: 'PENDING' },
+  })
+
+  const results = { approved: 0, failed: 0 }
+  const now = new Date()
+
+  for (const item of pending) {
+    try {
+      const data = item.data as any
+      const { answers = [], ...questionData } = data
+
+      if (item.questionId) {
+        const latestVersion = await prisma.questionVersion.findFirst({
+          where: { questionId: item.questionId },
+          orderBy: { version: 'desc' },
+        })
+        const question = await prisma.question.update({
+          where: { id: item.questionId },
+          data: { ...questionData, answers: { deleteMany: {}, create: answers } },
+          include: { answers: true },
+        })
+        await prisma.questionVersion.create({
+          data: {
+            questionId: question.id,
+            version: (latestVersion?.version ?? 0) + 1,
+            snapshot: question as any,
+          },
+        })
+      } else {
+        const question = await prisma.question.create({
+          data: { ...questionData, status: 'ACTIVE', answers: { create: answers } },
+          include: { answers: true },
+        })
+        await prisma.questionVersion.create({
+          data: { questionId: question.id, version: 1, snapshot: question as any },
+        })
+      }
+
+      await prisma.stagedQuestion.update({
+        where: { id: item.id },
+        data: { status: 'APPROVED', reviewedAt: now },
+      })
+      results.approved++
+    } catch {
+      results.failed++
+    }
+  }
+
+  return c.json(results)
+})
+
+// Bulk reject all PENDING staged questions
+app.post('/reject-all', zValidator('json', z.object({ reviewNotes: z.string().optional() })), async (c) => {
+  const { reviewNotes } = c.req.valid('json')
+  const result = await prisma.stagedQuestion.updateMany({
+    where: { status: 'PENDING' },
+    data: { status: 'REJECTED', reviewNotes: reviewNotes ?? null, reviewedAt: new Date() },
+  })
+  return c.json({ rejected: result.count })
+})
+
 export default app

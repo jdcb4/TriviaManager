@@ -8,11 +8,24 @@ import { runDuplicateDetection } from '../../services/duplicateDetection.js'
 const app = new Hono()
 
 const MODELS = [
+  // OpenAI
   'openai/gpt-4o-mini',
   'openai/gpt-4o',
+  // Anthropic
   'anthropic/claude-3-5-haiku',
-  'anthropic/claude-sonnet-4-5',
-  'google/gemini-flash-1.5',
+  'anthropic/claude-3-7-sonnet',
+  // Google Gemini (current generation)
+  'google/gemini-2.5-pro-preview',
+  'google/gemini-2.0-flash',
+  'google/gemini-2.0-flash-lite',
+  // DeepSeek
+  'deepseek/deepseek-chat',
+  'deepseek/deepseek-r1',
+  // Qwen
+  'qwen/qwen-2.5-72b-instruct',
+  'qwen/qwen-turbo',
+  // Meta
+  'meta-llama/llama-3.3-70b-instruct',
   'meta-llama/llama-3.1-8b-instruct',
 ]
 
@@ -58,8 +71,14 @@ app.post(
       try {
         const typeInstructions: Record<string, string> = {
           STANDARD: 'Each question should have a single correct free-text answer.',
-          MULTIPLE_CHOICE: 'Each question should have exactly 4 options (A-D), with exactly one correct answer. Mark the correct answer.',
-          MULTIPLE_ANSWER: 'Each question asks for multiple correct answers (e.g. "Name 5..."). Provide all correct answers.',
+          MULTIPLE_CHOICE: 'Each question should have exactly 4 options (A-D), with exactly one correct answer. Mark the correct answer with isCorrect:true, the rest with isCorrect:false.',
+          MULTIPLE_ANSWER: `Each question asks players to name N items from a larger set of valid answers.
+CRITICAL: You MUST list ALL valid answers in the answers array — not just the N that the question asks for.
+Example: "Name 3 of the 5 oceans" — the question only requires 3 answers, but you must provide all 5 oceans in the answers array, each with isCorrect:true.
+Example: "Name 3 primary colors" — there are exactly 3 primary colors, so list all 3.
+Example: "Name 3 elements that are noble gases" — there are 7 noble gases; list all 7 in the answers array.
+This is essential because all valid answers must be available for fair scoring.
+Phrase the question as "Name [N] of the [category]..." to make clear that more valid answers exist than required.`,
         }
 
         const prompt = `Generate exactly ${body.count} trivia questions${body.category ? ` about ${body.category}` : ''} at ${body.difficulty ?? 'MEDIUM'} difficulty.

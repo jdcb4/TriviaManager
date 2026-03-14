@@ -187,23 +187,4 @@ app.get('/:id/duplicates', async (c) => {
   return c.json(results)
 })
 
-// Bulk duplicate scan
-app.post('/scan-duplicates', async (c) => {
-  const questions = await prisma.question.findMany({
-    where: { status: 'ACTIVE' },
-    select: { id: true, text: true },
-  })
-
-  const duplicates: Array<{ questionId: string; matches: any[] }> = []
-
-  for (const q of questions) {
-    const matches = await runDuplicateDetection(q.text, q.id)
-    if (matches.length > 0) {
-      duplicates.push({ questionId: q.id, matches })
-    }
-  }
-
-  return c.json(duplicates)
-})
-
 export default app

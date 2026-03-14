@@ -2,30 +2,57 @@ import { Hono } from 'hono'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import fs from 'fs/promises'
+import { prisma } from '../../lib/prisma.js'
+import { generateDatasetFiles } from '../../services/fileGeneration.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const DOWNLOADS_DIR = path.resolve(__dirname, '../../public/downloads')
 
 const app = new Hono()
 
-async function serveDownload(c: any, filename: string, contentType: string) {
+// Check that a published version exists, then ensure the file is on disk.
+// If the file is missing (e.g. after a container restart wipes the filesystem),
+// regenerate it on the fly from the database before serving.
+async function getOrGenerateFile(filename: string): Promise<Buffer | null> {
+  // Guard: only serve if at least one published version exists
+  const latestVersion = await prisma.datasetVersion.findFirst({
+    where: { publishedAt: { not: null } },
+    orderBy: { version: 'desc' },
+  })
+  if (!latestVersion) return null
+
   const filePath = path.join(DOWNLOADS_DIR, filename)
+
   try {
-    const data = await fs.readFile(filePath)
-    return new Response(data, {
-      headers: {
-        'Content-Type': contentType,
-        'Content-Disposition': `attachment; filename="${filename}"`,
-        'Cache-Control': 'public, max-age=3600',
-      },
-    })
+    return await fs.readFile(filePath)
   } catch {
-    return c.json({ error: 'File not yet generated. An admin must publish the dataset first.' }, 404)
+    // File missing (container restart resets the filesystem) — regenerate from DB
+    const questions = await prisma.question.findMany({
+      where: { status: 'ACTIVE', isHidden: false },
+      include: { answers: { orderBy: { order: 'asc' } } },
+      orderBy: { id: 'asc' },
+    })
+    await generateDatasetFiles(questions as any)
+    return fs.readFile(filePath)
   }
 }
 
-app.get('/csv', (c) => serveDownload(c, 'questions.csv', 'text/csv'))
-app.get('/json', (c) => serveDownload(c, 'questions.json', 'application/json'))
-app.get('/sqlite', (c) => serveDownload(c, 'questions.db', 'application/x-sqlite3'))
+async function serveDownload(c: any, filename: string, contentType: string) {
+  const data = await getOrGenerateFile(filename)
+  if (!data) {
+    return c.json({ error: 'No published dataset yet. An admin must publish the dataset first.' }, 404)
+  }
+  return new Response(data, {
+    headers: {
+      'Content-Type': contentType,
+      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Cache-Control': 'public, max-age=3600',
+    },
+  })
+}
+
+app.get('/csv',    (c) => serveDownload(c, 'questions.csv',  'text/csv'))
+app.get('/json',   (c) => serveDownload(c, 'questions.json', 'application/json'))
+app.get('/sqlite', (c) => serveDownload(c, 'questions.db',   'application/x-sqlite3'))
 
 export default app

@@ -17,6 +17,7 @@ import adminStagingRouter from './routes/admin/staging.js'
 import adminFeedbackRouter, { publicFeedbackRouter } from './routes/admin/feedback.js'
 import adminVersionsRouter, { publicVersionRouter } from './routes/admin/versions.js'
 import adminAiRouter from './routes/admin/ai.js'
+import adminDuplicatesRouter from './routes/admin/duplicates.js'
 import adminIngestionRouter from './routes/admin/ingestion.js'
 import adminSettingsRouter from './routes/admin/settings.js'
 
@@ -51,6 +52,7 @@ app.route('/api/admin/staging', adminStagingRouter)
 app.route('/api/admin/feedback', adminFeedbackRouter)
 app.route('/api/admin/versions', adminVersionsRouter)
 app.route('/api/admin/ai', adminAiRouter)
+app.route('/api/admin/duplicates', adminDuplicatesRouter)
 app.route('/api/admin/ingestion', adminIngestionRouter)
 app.route('/api/admin/settings', adminSettingsRouter)
 
