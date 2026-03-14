@@ -70,29 +70,46 @@ app.post(
     ;(async () => {
       try {
         const typeInstructions: Record<string, string> = {
-          STANDARD: 'Each question should have a single correct free-text answer.',
-          MULTIPLE_CHOICE: 'Each question should have exactly 4 options (A-D), with exactly one correct answer. Mark the correct answer with isCorrect:true, the rest with isCorrect:false.',
+          STANDARD: `Each question has exactly ONE correct answer.
+- The "answers" array must contain exactly 1 object with isCorrect:true.
+- Do NOT include wrong options.`,
+
+          MULTIPLE_CHOICE: `Each question is a multiple-choice question with EXACTLY 4 answer options.
+- The "answers" array must contain EXACTLY 4 objects.
+- EXACTLY ONE answer has isCorrect:true (the correct answer).
+- The other THREE answers have isCorrect:false (plausible but wrong distractors).
+- Do NOT produce a question with more or fewer than 4 options.
+- Do NOT mark more than one answer as isCorrect:true.`,
+
           MULTIPLE_ANSWER: `Each question asks players to name N items from a larger set of valid answers.
-CRITICAL: You MUST list ALL valid answers in the answers array — not just the N that the question asks for.
-Example: "Name 3 of the 5 oceans" — the question only requires 3 answers, but you must provide all 5 oceans in the answers array, each with isCorrect:true.
-Example: "Name 3 primary colors" — there are exactly 3 primary colors, so list all 3.
-Example: "Name 3 elements that are noble gases" — there are 7 noble gases; list all 7 in the answers array.
-This is essential because all valid answers must be available for fair scoring.
-Phrase the question as "Name [N] of the [category]..." to make clear that more valid answers exist than required.`,
+- The "answers" array must contain ALL valid answers that exist (not just N of them).
+- ALL answers in the array have isCorrect:true.
+- CRITICAL: include every valid answer, even if the question only requires naming N of them.
+- Example: "Name 3 of the 5 oceans" → provide all 5 oceans (all isCorrect:true).
+- Example: "Name 3 noble gases" → provide all 7 noble gases (all isCorrect:true).
+- Phrase the question as "Name [N] of the [category]..." to signal there are more valid answers.`,
+        }
+
+        const typeExamples: Record<string, string> = {
+          STANDARD: `[{"text":"What is the capital of France?","answers":[{"text":"Paris","isCorrect":true,"order":0}],"category":"Geography","difficulty":"EASY"}]`,
+          MULTIPLE_CHOICE: `[{"text":"Which planet is the largest in our solar system?","answers":[{"text":"Jupiter","isCorrect":true,"order":0},{"text":"Saturn","isCorrect":false,"order":1},{"text":"Neptune","isCorrect":false,"order":2},{"text":"Mars","isCorrect":false,"order":3}],"category":"Science","difficulty":"EASY"}]`,
+          MULTIPLE_ANSWER: `[{"text":"Name 3 of the 5 oceans on Earth.","answers":[{"text":"Pacific","isCorrect":true,"order":0},{"text":"Atlantic","isCorrect":true,"order":1},{"text":"Indian","isCorrect":true,"order":2},{"text":"Arctic","isCorrect":true,"order":3},{"text":"Southern","isCorrect":true,"order":4}],"category":"Geography","difficulty":"MEDIUM"}]`,
         }
 
         const prompt = `Generate exactly ${body.count} trivia questions${body.category ? ` about ${body.category}` : ''} at ${body.difficulty ?? 'MEDIUM'} difficulty.
-Type: ${body.type}. ${typeInstructions[body.type]}
-${body.instructions ? `Additional instructions: ${body.instructions}` : ''}
+
+QUESTION TYPE: ${body.type}
+${typeInstructions[body.type]}
+${body.instructions ? `\nAdditional instructions: ${body.instructions}` : ''}
 
 Respond ONLY with a valid JSON array. Each element must have:
 - "text": the question text
-- "answers": array of objects with "text" (string), "isCorrect" (boolean), "order" (number)
+- "answers": array of objects with "text" (string), "isCorrect" (boolean), "order" (number starting at 0)
 - "category": string
 - "difficulty": "EASY"|"MEDIUM"|"HARD"
 
-Example for MULTIPLE_CHOICE:
-[{"text":"Which planet is largest?","answers":[{"text":"Jupiter","isCorrect":true,"order":0},{"text":"Saturn","isCorrect":false,"order":1},{"text":"Earth","isCorrect":false,"order":2},{"text":"Mars","isCorrect":false,"order":3}],"category":"Science","difficulty":"EASY"}]`
+Example output for type ${body.type}:
+${typeExamples[body.type]}`
 
         const content = await openrouterChat(body.model, [{ role: 'user', content: prompt }])
 
