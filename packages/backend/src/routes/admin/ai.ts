@@ -11,22 +11,30 @@ const MODELS = [
   // OpenAI
   'openai/gpt-4o-mini',
   'openai/gpt-4o',
+  'openai/o3-mini',
   // Anthropic
   'anthropic/claude-3-5-haiku',
   'anthropic/claude-3-7-sonnet',
+  'anthropic/claude-3-opus',
   // Google Gemini (current generation)
   'google/gemini-2.5-pro-preview',
+  'google/gemini-2.5-flash-preview',
   'google/gemini-2.0-flash',
   'google/gemini-2.0-flash-lite',
   // DeepSeek
   'deepseek/deepseek-chat',
   'deepseek/deepseek-r1',
+  'deepseek/deepseek-r1-distill-llama-70b',
   // Qwen
   'qwen/qwen-2.5-72b-instruct',
+  'qwen/qwq-32b',
   'qwen/qwen-turbo',
   // Meta
   'meta-llama/llama-3.3-70b-instruct',
   'meta-llama/llama-3.1-8b-instruct',
+  // Mistral
+  'mistral/mistral-large-2411',
+  'mistral/mistral-small-3.1-24b-instruct',
 ]
 
 app.get('/models', async (c) => {

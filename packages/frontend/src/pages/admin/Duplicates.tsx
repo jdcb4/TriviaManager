@@ -4,7 +4,7 @@ import { api } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { Copy, Search, RefreshCw, CheckCircle, Archive, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react'
+import { Copy, Search, RefreshCw, CheckCircle, Archive, ChevronDown, ChevronUp, AlertTriangle, ChevronsUpDown } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { Link } from 'react-router-dom'
 
@@ -43,12 +43,12 @@ const layerLabel: Record<string, string> = {
   levenshtein: 'Similar text',
 }
 
-function ProgressBar({ value, max }: { value: number; max: number }) {
+function ProgressBar({ value, max, label }: { value: number; max: number; label?: string }) {
   const pct = max > 0 ? Math.round((value / max) * 100) : 0
   return (
     <div className="space-y-1">
       <div className="flex justify-between text-xs text-gray-500">
-        <span>Scanning questions…</span>
+        <span>{label ?? 'Scanning questions…'}</span>
         <span>{value.toLocaleString()} / {max.toLocaleString()} ({pct}%)</span>
       </div>
       <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
@@ -65,12 +65,14 @@ function PairCard({
   pair,
   scanId,
   onResolved,
+  forceExpanded,
 }: {
   pair: DuplicatePair
   scanId: string
   onResolved: () => void
+  forceExpanded?: boolean
 }) {
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(forceExpanded ?? false)
 
   const resolveMut = useMutation({
     mutationFn: (resolution: string) =>
@@ -177,11 +179,15 @@ function PairCard({
 export default function Duplicates() {
   const qc = useQueryClient()
   const [showResolved, setShowResolved] = useState(false)
+  const [expandAll, setExpandAll] = useState(false)
 
-  // Fetch latest scan; poll while running
+  // Fetch latest scan — keep cached indefinitely so navigation away and back
+  // shows previous results immediately without losing work
   const { data: scan } = useQuery<ScanResult | null>({
     queryKey: ['duplicate-scan'],
     queryFn: () => api.get('/api/admin/duplicates/scan/latest').then(r => r.data),
+    staleTime: Infinity,
+    gcTime: Infinity,
     refetchInterval: (query) =>
       query.state.data?.status === 'running' ? 2000 : false,
   })
@@ -223,6 +229,7 @@ export default function Duplicates() {
                 <span>
                   Last scan: <strong>{pairs.length}</strong> pair{pairs.length !== 1 ? 's' : ''} found
                   {' · '}{new Date(scan.completedAt!).toLocaleString()}
+                  {' · '}<span className="text-gray-400 text-xs">results saved</span>
                 </span>
               ) : scan.status === 'failed' ? (
                 <span className="text-red-600">Last scan failed: {scan.error}</span>
@@ -243,9 +250,18 @@ export default function Duplicates() {
           </Button>
         </div>
 
-        {/* Progress bar (visible while running) */}
+        {/* Scan progress bar (visible while running) */}
         {isRunning && scan && (
           <ProgressBar value={scan.scannedCount} max={scan.totalQuestions} />
+        )}
+
+        {/* Resolution progress (visible when done and there are pairs) */}
+        {scan?.status === 'done' && pairs.length > 0 && (
+          <ProgressBar
+            value={resolved.length}
+            max={pairs.length}
+            label="Pairs reviewed"
+          />
         )}
 
         {/* Algorithm info */}
@@ -258,7 +274,7 @@ export default function Duplicates() {
       {/* Results */}
       {scan?.status === 'done' && (
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-3">
               <h2 className="font-semibold text-gray-800">
                 {unresolved.length} unresolved pair{unresolved.length !== 1 ? 's' : ''}
@@ -273,10 +289,19 @@ export default function Duplicates() {
               )}
             </div>
             {unresolved.length > 0 && (
-              <span className="text-xs text-gray-400 flex items-center gap-1">
-                <AlertTriangle size={12} className="text-amber-500" />
-                Click a row to compare side-by-side
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-gray-400 flex items-center gap-1">
+                  <AlertTriangle size={12} className="text-amber-500" />
+                  Click a row to compare side-by-side
+                </span>
+                <button
+                  className="text-xs text-indigo-600 hover:underline flex items-center gap-1"
+                  onClick={() => setExpandAll(e => !e)}
+                >
+                  <ChevronsUpDown size={12} />
+                  {expandAll ? 'Collapse all' : 'Expand all'}
+                </button>
+              </div>
             )}
           </div>
 
@@ -292,6 +317,7 @@ export default function Duplicates() {
                   key={`${pair.aId}-${pair.bId}-${i}`}
                   pair={pair}
                   scanId={scan.id}
+                  forceExpanded={expandAll && pair.resolution === null}
                   onResolved={() => qc.invalidateQueries({ queryKey: ['duplicate-scan'] })}
                 />
               ))}

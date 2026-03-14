@@ -128,7 +128,7 @@ export default function Staging() {
   })
 
   const pendingCount = staged?.filter(s => s.status === 'PENDING').length ?? 0
-  const showBulkActions = statusFilter === 'PENDING' && pendingCount > 1
+  const showBulkActions = statusFilter === 'PENDING' && pendingCount > 0
 
   return (
     <div className="p-6 space-y-4">
