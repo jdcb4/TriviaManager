@@ -4,7 +4,7 @@ import { api, type Question } from '@/lib/api'
 import { Badge } from '@/components/ui/badge'
 import { Input, Select } from '@/components/ui/input'
 import { difficultyColor, typeLabel } from '@/lib/utils'
-import { Search, Download, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, Download, ChevronLeft, ChevronRight, Settings } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 function QuestionRow({ q }: { q: Question }) {
@@ -66,6 +66,9 @@ export default function Browse() {
               <Download size={14} />Downloads
             </Link>
             <Link to="/feedback" className="text-gray-600 hover:text-indigo-600">Feedback</Link>
+            <Link to="/admin" className="text-gray-600 hover:text-indigo-600 flex items-center gap-1">
+              <Settings size={14} />Admin
+            </Link>
           </div>
         </div>
       </header>
