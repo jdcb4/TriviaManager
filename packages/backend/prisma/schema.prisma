@@ -1,0 +1,148 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum QuestionType {
+  STANDARD
+  MULTIPLE_CHOICE
+  MULTIPLE_ANSWER
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum QuestionStatus {
+  ACTIVE
+  STAGED
+  ARCHIVED
+  FLAGGED
+}
+
+enum StagingStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum FeedbackRating {
+  GOOD
+  BAD
+}
+
+model Question {
+  id          String         @id @default(uuid())
+  text        String
+  type        QuestionType   @default(STANDARD)
+  points      Int            @default(1)
+  difficulty  Difficulty     @default(MEDIUM)
+  category    String?
+  subCategory String?
+  collection  String?
+  origin      String?
+  status      QuestionStatus @default(ACTIVE)
+  isHidden    Boolean        @default(false)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  answers  Answer[]
+  versions QuestionVersion[]
+  feedback Feedback[]
+  staged   StagedQuestion?
+
+  @@index([status])
+  @@index([category])
+  @@index([difficulty])
+  @@index([type])
+  @@index([collection])
+}
+
+model Answer {
+  id         String   @id @default(uuid())
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  text       String
+  isCorrect  Boolean  @default(true)
+  order      Int      @default(0)
+
+  @@index([questionId])
+}
+
+model Collection {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+}
+
+model QuestionVersion {
+  id         String   @id @default(uuid())
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  version    Int
+  snapshot   Json
+  createdAt  DateTime @default(now())
+
+  @@unique([questionId, version])
+  @@index([questionId])
+}
+
+model DatasetVersion {
+  id            String    @id @default(uuid())
+  version       Int       @unique @default(autoincrement())
+  checksum      String
+  questionCount Int
+  notes         String?
+  createdAt     DateTime  @default(now())
+  publishedAt   DateTime?
+}
+
+model StagedQuestion {
+  id          String        @id @default(uuid())
+  questionId  String?       @unique
+  question    Question?     @relation(fields: [questionId], references: [id])
+  data        Json
+  status      StagingStatus @default(PENDING)
+  source      String?
+  aiNotes     String?
+  reviewNotes String?
+  duplicateOf String?
+  createdAt   DateTime      @default(now())
+  reviewedAt  DateTime?
+
+  @@index([status])
+}
+
+model Feedback {
+  id         String         @id @default(uuid())
+  questionId String
+  question   Question       @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  rating     FeedbackRating
+  notes      String?
+  createdAt  DateTime       @default(now())
+
+  @@index([questionId])
+}
+
+model AiTask {
+  id          String    @id @default(uuid())
+  type        String
+  status      String    @default("pending")
+  model       String?
+  prompt      String?
+  result      Json?
+  error       String?
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  @@index([status])
+}

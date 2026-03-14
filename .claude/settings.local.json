@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip install:*)",
+      "Bash(python migrate.py)",
+      "Bash(python3:*)",
+      "WebSearch",
+      "Bash(sqlite3 db/trivia.db \".schema\")"
+    ]
+  }
+}

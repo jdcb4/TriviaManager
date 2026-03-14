@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+packages/backend/public/
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+db/*.db
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Generated download files
+packages/backend/public/downloads/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Docker
+.dockerenv
+
+# Prisma
+packages/backend/prisma/migrations/*/migration.sql
