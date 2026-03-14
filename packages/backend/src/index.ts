@@ -18,6 +18,7 @@ import adminFeedbackRouter, { publicFeedbackRouter } from './routes/admin/feedba
 import adminVersionsRouter, { publicVersionRouter } from './routes/admin/versions.js'
 import adminAiRouter from './routes/admin/ai.js'
 import adminIngestionRouter from './routes/admin/ingestion.js'
+import adminSettingsRouter from './routes/admin/settings.js'
 
 const app = new Hono()
 
@@ -51,6 +52,7 @@ app.route('/api/admin/feedback', adminFeedbackRouter)
 app.route('/api/admin/versions', adminVersionsRouter)
 app.route('/api/admin/ai', adminAiRouter)
 app.route('/api/admin/ingestion', adminIngestionRouter)
+app.route('/api/admin/settings', adminSettingsRouter)
 
 // Health check
 app.get('/api/health', (c) => c.json({ status: 'ok', timestamp: new Date().toISOString() }))

@@ -2,7 +2,7 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { logout } from '@/lib/auth'
 import {
   LayoutDashboard, HelpCircle, Layers, MessageSquare,
-  Bot, Copy, History, FolderOpen, Upload, LogOut, ChevronRight
+  Bot, Copy, History, FolderOpen, Upload, LogOut, ChevronRight, Settings
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -16,6 +16,7 @@ const navItems = [
   { to: '/admin/feedback', icon: MessageSquare, label: 'Feedback' },
   { to: '/admin/collections', icon: FolderOpen, label: 'Collections' },
   { to: '/admin/versions', icon: History, label: 'Versions' },
+  { to: '/admin/settings', icon: Settings, label: 'Settings' },
 ]
 
 export default function AdminLayout() {

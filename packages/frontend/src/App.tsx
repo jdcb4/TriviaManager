@@ -19,6 +19,7 @@ import Duplicates from './pages/admin/Duplicates'
 import Versions from './pages/admin/Versions'
 import Collections from './pages/admin/Collections'
 import Ingestion from './pages/admin/Ingestion'
+import Settings from './pages/admin/Settings'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (!isAuthenticated()) return <Navigate to="/admin/login" replace />
@@ -55,6 +56,7 @@ export default function App() {
           <Route path="versions" element={<Versions />} />
           <Route path="collections" element={<Collections />} />
           <Route path="ingestion" element={<Ingestion />} />
+          <Route path="settings" element={<Settings />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />
