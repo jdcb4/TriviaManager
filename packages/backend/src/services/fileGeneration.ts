@@ -5,7 +5,8 @@ import { stringify } from 'csv-stringify/sync'
 import Database from 'better-sqlite3'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const DOWNLOADS_DIR = path.resolve(__dirname, '../../public/downloads')
+// Two levels up from dist/services → packages/backend root, then into public/downloads
+export const DOWNLOADS_DIR = path.resolve(__dirname, '../../public/downloads')
 
 type Question = {
   id: string

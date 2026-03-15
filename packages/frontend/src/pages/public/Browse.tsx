@@ -3,8 +3,9 @@ import { useQuery } from '@tanstack/react-query'
 import { api, type Question } from '@/lib/api'
 import { Badge } from '@/components/ui/badge'
 import { Input, Select } from '@/components/ui/input'
+import { CATEGORIES } from '@/lib/categories'
 import { difficultyColor, typeLabel } from '@/lib/utils'
-import { Search, Download, ChevronLeft, ChevronRight, Settings, Book } from 'lucide-react'
+import { Search, Download, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Settings, Book, FileDown } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 function QuestionRow({ q }: { q: Question }) {
@@ -41,12 +42,13 @@ function QuestionRow({ q }: { q: Question }) {
 
 export default function Browse() {
   const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(25)
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('')
   const [difficulty, setDifficulty] = useState('')
   const [type, setType] = useState('')
 
-  const params = { page, limit: 25, ...(search && { search }), ...(category && { category }), ...(difficulty && { difficulty }), ...(type && { type }) }
+  const params = { page, limit, ...(search && { search }), ...(category && { category }), ...(difficulty && { difficulty }), ...(type && { type }) }
 
   const { data, isLoading } = useQuery({
     queryKey: ['public-questions', params],
@@ -56,12 +58,17 @@ export default function Browse() {
   const questions: Question[] = data?.data ?? []
   const meta = data?.meta
 
+  function changePage(p: number) { setPage(Math.max(1, Math.min(p, meta?.pages ?? 1))) }
+
   return (
     <div className="min-h-screen bg-white">
       <header className="border-b bg-white sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
           <h1 className="font-bold text-indigo-700 text-lg">TriviaManager</h1>
           <div className="flex gap-3 text-sm">
+            <Link to="/export" className="text-gray-600 hover:text-indigo-600 flex items-center gap-1">
+              <FileDown size={14} />Export
+            </Link>
             <Link to="/download" className="text-gray-600 hover:text-indigo-600 flex items-center gap-1">
               <Download size={14} />Downloads
             </Link>
@@ -88,6 +95,10 @@ export default function Browse() {
             <Search size={14} className="absolute left-3 top-2.5 text-gray-400" />
             <Input className="pl-8" placeholder="Search…" value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} />
           </div>
+          <Select value={category} onChange={e => { setCategory(e.target.value); setPage(1) }} className="w-44">
+            <option value="">Category</option>
+            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+          </Select>
           <Select value={difficulty} onChange={e => { setDifficulty(e.target.value); setPage(1) }} className="w-32">
             <option value="">Difficulty</option>
             {['EASY', 'MEDIUM', 'HARD'].map(d => <option key={d} value={d}>{d}</option>)}
@@ -110,19 +121,41 @@ export default function Browse() {
         </div>
 
         {/* Pagination */}
-        {meta && meta.pages > 1 && (
-          <div className="flex items-center justify-between text-sm text-gray-500">
-            <span>Page {meta.page} of {meta.pages}</span>
-            <div className="flex gap-2">
-              <button onClick={() => setPage(p => p - 1)} disabled={page === 1}
-                className="px-3 py-1.5 rounded border disabled:opacity-40 hover:bg-gray-50">
-                <ChevronLeft size={14} />
-              </button>
-              <button onClick={() => setPage(p => p + 1)} disabled={page >= meta.pages}
-                className="px-3 py-1.5 rounded border disabled:opacity-40 hover:bg-gray-50">
-                <ChevronRight size={14} />
-              </button>
+        {meta && (
+          <div className="flex items-center justify-between text-sm text-gray-500 flex-wrap gap-2">
+            <div className="flex items-center gap-3">
+              <span>Page {meta.page} of {meta.pages} · {meta.total.toLocaleString()} total</span>
+              <div className="flex items-center gap-1.5">
+                <label className="text-xs text-gray-400">Per page:</label>
+                <Select
+                  value={String(limit)}
+                  onChange={e => { setLimit(Number(e.target.value)); setPage(1) }}
+                  className="w-20 py-1 text-xs"
+                >
+                  {[10, 25, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}
+                </Select>
+              </div>
             </div>
+            {meta.pages > 1 && (
+              <div className="flex gap-1">
+                <button onClick={() => changePage(1)} disabled={page === 1}
+                  className="px-2 py-1.5 rounded border disabled:opacity-40 hover:bg-gray-50" title="First page">
+                  <ChevronsLeft size={14} />
+                </button>
+                <button onClick={() => changePage(page - 1)} disabled={page === 1}
+                  className="px-2 py-1.5 rounded border disabled:opacity-40 hover:bg-gray-50" title="Previous page">
+                  <ChevronLeft size={14} />
+                </button>
+                <button onClick={() => changePage(page + 1)} disabled={page >= meta.pages}
+                  className="px-2 py-1.5 rounded border disabled:opacity-40 hover:bg-gray-50" title="Next page">
+                  <ChevronRight size={14} />
+                </button>
+                <button onClick={() => changePage(meta.pages)} disabled={page >= meta.pages}
+                  className="px-2 py-1.5 rounded border disabled:opacity-40 hover:bg-gray-50" title="Last page">
+                  <ChevronsRight size={14} />
+                </button>
+              </div>
+            )}
           </div>
         )}
       </main>

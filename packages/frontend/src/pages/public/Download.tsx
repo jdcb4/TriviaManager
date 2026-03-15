@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { Link } from 'react-router-dom'
-import { FileJson, FileSpreadsheet, Database, ArrowLeft, Book } from 'lucide-react'
+import { FileJson, FileSpreadsheet, Database, ArrowLeft, Book, FileDown } from 'lucide-react'
 
 export default function Download() {
   const { data: version } = useQuery({
@@ -41,9 +41,14 @@ export default function Download() {
             <Link to="/" className="text-gray-400 hover:text-gray-700"><ArrowLeft size={18} /></Link>
             <h1 className="font-bold text-indigo-700">TriviaManager</h1>
           </div>
-          <Link to="/docs" className="text-sm text-gray-500 hover:text-indigo-600 flex items-center gap-1">
-            <Book size={14} />API Docs
-          </Link>
+          <div className="flex gap-3 text-sm">
+            <Link to="/export" className="text-gray-500 hover:text-indigo-600 flex items-center gap-1">
+              <FileDown size={14} />Export
+            </Link>
+            <Link to="/docs" className="text-gray-500 hover:text-indigo-600 flex items-center gap-1">
+              <Book size={14} />API Docs
+            </Link>
+          </div>
         </div>
       </header>
 

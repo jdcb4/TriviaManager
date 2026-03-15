@@ -1,12 +1,8 @@
 import { Hono } from 'hono'
 import path from 'path'
-import { fileURLToPath } from 'url'
 import fs from 'fs/promises'
 import { prisma } from '../../lib/prisma.js'
-import { generateDatasetFiles } from '../../services/fileGeneration.js'
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const DOWNLOADS_DIR = path.resolve(__dirname, '../../public/downloads')
+import { generateDatasetFiles, DOWNLOADS_DIR } from '../../services/fileGeneration.js'
 
 const app = new Hono()
 
@@ -46,17 +42,22 @@ async function getOrGenerateFile(filename: string): Promise<ArrayBuffer | null> 
 }
 
 async function serveDownload(c: any, filename: string, contentType: string) {
-  const data = await getOrGenerateFile(filename)
-  if (!data) {
-    return c.json({ error: 'No published dataset yet. An admin must publish the dataset first.' }, 404)
+  try {
+    const data = await getOrGenerateFile(filename)
+    if (!data) {
+      return c.json({ error: 'No published dataset yet. An admin must publish the dataset first.' }, 404)
+    }
+    return new Response(data, {
+      headers: {
+        'Content-Type': contentType,
+        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Cache-Control': 'public, max-age=3600',
+      },
+    })
+  } catch (err: any) {
+    console.error('[downloads] Failed to serve', filename, err?.message)
+    return c.json({ error: 'Failed to generate download file. Please try again or contact an admin.' }, 500)
   }
-  return new Response(data, {
-    headers: {
-      'Content-Type': contentType,
-      'Content-Disposition': `attachment; filename="${filename}"`,
-      'Cache-Control': 'public, max-age=3600',
-    },
-  })
 }
 
 app.get('/csv',    (c) => serveDownload(c, 'questions.csv',  'text/csv'))

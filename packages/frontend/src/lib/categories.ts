@@ -3,16 +3,16 @@
  * Keep this list in sync with the backend constant in services/categories.ts.
  */
 export const CATEGORIES = [
-  'Science & Nature',
-  'History',
-  'Geography',
-  'Entertainment',
-  'Sports & Leisure',
   'Arts & Literature',
+  'Entertainment',
   'Food & Drink',
-  'Technology',
-  'Music',
   'General Knowledge',
+  'Geography',
+  'History',
+  'Music',
+  'Science & Nature',
+  'Sports & Leisure',
+  'Technology',
 ] as const
 
 export type Category = (typeof CATEGORIES)[number]

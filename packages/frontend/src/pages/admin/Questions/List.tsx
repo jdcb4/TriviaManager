@@ -8,8 +8,8 @@ import { Input, Select } from '@/components/ui/input'
 import { difficultyColor, statusColor, typeLabel } from '@/lib/utils'
 import { CATEGORIES } from '@/lib/categories'
 import {
-  Plus, Search, Trash2, Edit2, ChevronLeft, ChevronRight,
-  ArrowUpDown, ArrowUp, ArrowDown, CheckSquare, X,
+  Plus, Search, Trash2, Edit2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
+  ArrowUpDown, ArrowUp, ArrowDown, CheckSquare, X, EyeOff, Eye,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -116,8 +116,11 @@ function SortTh({
 export default function QuestionList() {
   const qc = useQueryClient()
   const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(50)
   const [search, setSearch] = useState('')
-  const [statusFilters, setStatusFilters] = useState<string[]>([])
+  // Default to showing only ACTIVE; "Show inactive" toggle clears this
+  const [showInactive, setShowInactive] = useState(false)
+  const [statusFilters, setStatusFilters] = useState<string[]>(['ACTIVE'])
   const [diffFilters, setDiffFilters] = useState<string[]>([])
   const [typeFilters, setTypeFilters] = useState<string[]>([])
   const [categoryFilters, setCategoryFilters] = useState<string[]>([])
@@ -137,10 +140,13 @@ export default function QuestionList() {
     setPage(1)
   }
 
+  // When showInactive is off, always restrict to ACTIVE regardless of statusFilters
+  const effectiveStatuses = showInactive ? statusFilters : ['ACTIVE']
+
   const params: Record<string, any> = {
-    page, limit: 50, sortBy, sortDir,
+    page, limit, sortBy, sortDir,
     ...(search && { search }),
-    ...(statusFilters.length > 0 && { statuses: statusFilters.join(',') }),
+    ...(effectiveStatuses.length > 0 && { statuses: effectiveStatuses.join(',') }),
     ...(diffFilters.length > 0 && { difficulties: diffFilters.join(',') }),
     ...(typeFilters.length > 0 && { types: typeFilters.join(',') }),
     ...(categoryFilters.length > 0 && { categories: categoryFilters.join(',') }),
@@ -188,7 +194,8 @@ export default function QuestionList() {
   }
 
   const allSelected = questions.length > 0 && selected.size === questions.length
-  const hasActiveFilters = statusFilters.length > 0 || diffFilters.length > 0 || typeFilters.length > 0 || categoryFilters.length > 0
+  // statusFilters=['ACTIVE'] is the default — only count it as a user filter when showInactive is on
+  const hasActiveFilters = (showInactive && statusFilters.length > 0) || diffFilters.length > 0 || typeFilters.length > 0 || categoryFilters.length > 0
 
   return (
     <div className="p-6 space-y-4">
@@ -238,10 +245,31 @@ export default function QuestionList() {
           selected={categoryFilters}
           onChange={v => { setCategoryFilters(v); setPage(1) }}
         />
-        {hasActiveFilters && (
+        <button
+          onClick={() => {
+            const next = !showInactive
+            setShowInactive(next)
+            // When toggling inactive on, clear the ACTIVE-only default so multiselect is free
+            if (next) setStatusFilters([])
+            else setStatusFilters(['ACTIVE'])
+            setPage(1)
+          }}
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-colors ${
+            showInactive
+              ? 'border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100'
+              : 'border-gray-200 bg-white text-gray-500 hover:bg-gray-50'
+          }`}
+        >
+          {showInactive ? <Eye size={12} /> : <EyeOff size={12} />}
+          {showInactive ? 'Hiding active only' : 'Active only'}
+        </button>
+        {(hasActiveFilters || showInactive) && (
           <button
             className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1 px-2"
-            onClick={() => { setStatusFilters([]); setDiffFilters([]); setTypeFilters([]); setCategoryFilters([]); setPage(1) }}
+            onClick={() => {
+              setStatusFilters(['ACTIVE']); setDiffFilters([]); setTypeFilters([])
+              setCategoryFilters([]); setShowInactive(false); setPage(1)
+            }}
           >
             <X size={12} /> Clear filters
           </button>
@@ -394,15 +422,33 @@ export default function QuestionList() {
 
       {/* Pagination */}
       {meta && (
-        <div className="flex items-center justify-between text-sm text-gray-500">
-          <span>{meta.total} questions · page {meta.page}/{meta.pages}</span>
+        <div className="flex items-center justify-between text-sm text-gray-500 flex-wrap gap-2">
+          <div className="flex items-center gap-3">
+            <span>{meta.total.toLocaleString()} questions · page {meta.page}/{meta.pages}</span>
+            <div className="flex items-center gap-1.5">
+              <label className="text-xs text-gray-400">Per page:</label>
+              <Select
+                value={String(limit)}
+                onChange={e => { setLimit(Number(e.target.value)); setPage(1) }}
+                className="w-20 py-1 text-xs"
+              >
+                {[25, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}
+              </Select>
+            </div>
+          </div>
           {meta.pages > 1 && (
-            <div className="flex gap-2">
-              <Button size="sm" variant="outline" onClick={() => setPage(p => p - 1)} disabled={page === 1}>
+            <div className="flex gap-1">
+              <Button size="sm" variant="outline" onClick={() => setPage(1)} disabled={page === 1} title="First page">
+                <ChevronsLeft size={14} />
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setPage(p => p - 1)} disabled={page === 1} title="Previous page">
                 <ChevronLeft size={14} />
               </Button>
-              <Button size="sm" variant="outline" onClick={() => setPage(p => p + 1)} disabled={page >= meta.pages}>
+              <Button size="sm" variant="outline" onClick={() => setPage(p => p + 1)} disabled={page >= meta.pages} title="Next page">
                 <ChevronRight size={14} />
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setPage(meta.pages)} disabled={page >= meta.pages} title="Last page">
+                <ChevronsRight size={14} />
               </Button>
             </div>
           )}

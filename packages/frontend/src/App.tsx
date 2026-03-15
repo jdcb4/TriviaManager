@@ -6,6 +6,7 @@ import Browse from './pages/public/Browse'
 import Download from './pages/public/Download'
 import Docs from './pages/public/Docs'
 import FeedbackSwipe from './pages/public/FeedbackSwipe'
+import Export from './pages/public/Export'
 
 // Admin pages
 import Login from './pages/admin/Login'
@@ -36,6 +37,7 @@ export default function App() {
         <Route path="/download" element={<Download />} />
         <Route path="/docs" element={<Docs />} />
         <Route path="/feedback" element={<FeedbackSwipe />} />
+        <Route path="/export" element={<Export />} />
 
         {/* Admin */}
         <Route path="/admin/login" element={<Login />} />
