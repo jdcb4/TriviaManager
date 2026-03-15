@@ -4,6 +4,7 @@ import { isAuthenticated } from './lib/auth'
 // Public pages
 import Browse from './pages/public/Browse'
 import Download from './pages/public/Download'
+import Docs from './pages/public/Docs'
 import FeedbackSwipe from './pages/public/FeedbackSwipe'
 
 // Admin pages
@@ -33,6 +34,7 @@ export default function App() {
         {/* Public */}
         <Route path="/" element={<Browse />} />
         <Route path="/download" element={<Download />} />
+        <Route path="/docs" element={<Docs />} />
         <Route path="/feedback" element={<FeedbackSwipe />} />
 
         {/* Admin */}
