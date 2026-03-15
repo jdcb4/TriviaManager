@@ -6,9 +6,11 @@ import { prisma } from '../../lib/prisma.js'
 const app = new Hono()
 
 const querySchema = z.object({
-  type: z.enum(['STANDARD', 'MULTIPLE_CHOICE', 'MULTIPLE_ANSWER']).optional(),
+  // Accept comma-separated values for multi-select (e.g. type=STANDARD,MULTIPLE_CHOICE)
+  // Single values remain backward-compatible.
+  type: z.string().optional(),
   category: z.string().optional(),
-  difficulty: z.enum(['EASY', 'MEDIUM', 'HARD']).optional(),
+  difficulty: z.string().optional(),
   collection: z.string().optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
@@ -17,12 +19,19 @@ const querySchema = z.object({
 app.get('/', zValidator('query', querySchema), async (c) => {
   const { type, category, difficulty, collection, page, limit } = c.req.valid('query')
 
+  const types = type ? type.split(',').filter(Boolean) : []
+  const categories = category ? category.split(',').filter(Boolean) : []
+  const difficulties = difficulty ? difficulty.split(',').filter(Boolean) : []
+
   const where = {
     status: 'ACTIVE' as const,
     isHidden: false,
-    ...(type && { type }),
-    ...(category && { category }),
-    ...(difficulty && { difficulty }),
+    ...(types.length === 1 && { type: types[0] as any }),
+    ...(types.length > 1 && { type: { in: types as any[] } }),
+    ...(categories.length === 1 && { category: categories[0] }),
+    ...(categories.length > 1 && { category: { in: categories } }),
+    ...(difficulties.length === 1 && { difficulty: difficulties[0] as any }),
+    ...(difficulties.length > 1 && { difficulty: { in: difficulties as any[] } }),
     ...(collection && { collection }),
   }
 

@@ -2,27 +2,46 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { CATEGORIES } from '@/lib/categories'
+import { MultiSelect } from '@/components/ui/multiselect'
 import { Select } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { typeLabel } from '@/lib/utils'
 import { Download, FileJson, FileText, Settings, Book, FileDown, Search } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
+const TYPE_OPTIONS = [
+  { value: 'STANDARD', label: typeLabel('STANDARD') },
+  { value: 'MULTIPLE_CHOICE', label: typeLabel('MULTIPLE_CHOICE') },
+  { value: 'MULTIPLE_ANSWER', label: typeLabel('MULTIPLE_ANSWER') },
+]
+
+const DIFFICULTY_OPTIONS = [
+  { value: 'EASY', label: 'Easy' },
+  { value: 'MEDIUM', label: 'Medium' },
+  { value: 'HARD', label: 'Hard' },
+]
+
+const CATEGORY_OPTIONS = CATEGORIES.map(c => ({ value: c, label: c }))
+
 export default function Export() {
-  const [category, setCategory] = useState('')
-  const [difficulty, setDifficulty] = useState('')
-  const [type, setType] = useState('')
+  const [categories, setCategories] = useState<string[]>([])
+  const [difficulties, setDifficulties] = useState<string[]>([])
+  const [types, setTypes] = useState<string[]>([])
   const [limit, setLimit] = useState(100)
   const [format, setFormat] = useState<'json' | 'csv'>('json')
   const [isExporting, setIsExporting] = useState(false)
 
-  // Preview count
-  const previewParams = {
-    page: 1, limit: 1,
-    ...(category && { category }),
-    ...(difficulty && { difficulty }),
-    ...(type && { type }),
+  // Build filter params — comma-join multi-values
+  function buildFilterParams() {
+    return {
+      ...(categories.length > 0 && { category: categories.join(',') }),
+      ...(difficulties.length > 0 && { difficulty: difficulties.join(',') }),
+      ...(types.length > 0 && { type: types.join(',') }),
+    }
   }
+
+  // Preview count
+  const previewParams = { page: 1, limit: 1, ...buildFilterParams() }
   const { data: previewData } = useQuery({
     queryKey: ['export-preview', previewParams],
     queryFn: () => api.get('/api/questions', { params: previewParams }).then(r => r.data),
@@ -33,13 +52,7 @@ export default function Export() {
   async function handleExport() {
     setIsExporting(true)
     try {
-      const params: Record<string, any> = {
-        page: 1,
-        limit,
-        ...(category && { category }),
-        ...(difficulty && { difficulty }),
-        ...(type && { type }),
-      }
+      const filterParams = buildFilterParams()
 
       // Collect all pages if limit > 100 (API max per page)
       const allQuestions: any[] = []
@@ -47,7 +60,7 @@ export default function Export() {
       const pageSize = Math.min(limit, 100)
       while (allQuestions.length < limit) {
         const res = await api.get('/api/questions', {
-          params: { ...params, page: currentPage, limit: pageSize },
+          params: { ...filterParams, page: currentPage, limit: pageSize },
         })
         const batch = res.data.data ?? []
         allQuestions.push(...batch)
@@ -133,30 +146,39 @@ export default function Export() {
         <div className="bg-white border rounded-xl p-6 space-y-5">
           {/* Filters */}
           <div>
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">Filters <span className="text-gray-400 font-normal">(optional)</span></h3>
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">
+              Filters <span className="text-gray-400 font-normal">(optional)</span>
+            </h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Category</label>
-                <Select value={category} onChange={e => setCategory(e.target.value)} className="w-full">
-                  <option value="">All categories</option>
-                  {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                </Select>
+                <MultiSelect
+                  options={CATEGORY_OPTIONS}
+                  value={categories}
+                  onChange={setCategories}
+                  placeholder="All categories"
+                  className="w-full"
+                />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Difficulty</label>
-                <Select value={difficulty} onChange={e => setDifficulty(e.target.value)} className="w-full">
-                  <option value="">All difficulties</option>
-                  {['EASY', 'MEDIUM', 'HARD'].map(d => <option key={d} value={d}>{d}</option>)}
-                </Select>
+                <MultiSelect
+                  options={DIFFICULTY_OPTIONS}
+                  value={difficulties}
+                  onChange={setDifficulties}
+                  placeholder="All difficulties"
+                  className="w-full"
+                />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Type</label>
-                <Select value={type} onChange={e => setType(e.target.value)} className="w-full">
-                  <option value="">All types</option>
-                  {['STANDARD', 'MULTIPLE_CHOICE', 'MULTIPLE_ANSWER'].map(t => (
-                    <option key={t} value={t}>{typeLabel(t)}</option>
-                  ))}
-                </Select>
+                <MultiSelect
+                  options={TYPE_OPTIONS}
+                  value={types}
+                  onChange={setTypes}
+                  placeholder="All types"
+                  className="w-full"
+                />
               </div>
             </div>
           </div>
@@ -171,7 +193,9 @@ export default function Export() {
               {totalAvailable > 0 && (
                 <p className="text-xs text-gray-400">
                   {totalAvailable.toLocaleString()} available
-                  {limit > totalAvailable ? ` — will export all ${totalAvailable.toLocaleString()}` : ` — will export ${exportCount.toLocaleString()}`}
+                  {limit > totalAvailable
+                    ? ` — will export all ${totalAvailable.toLocaleString()}`
+                    : ` — will export ${exportCount.toLocaleString()}`}
                 </p>
               )}
             </div>
