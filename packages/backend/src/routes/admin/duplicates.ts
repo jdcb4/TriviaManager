@@ -144,7 +144,7 @@ app.post(
       data: { results: { pairs: updatedPairs } as any },
     })
 
-    // Side-effect: archive the flagged question
+    // Side-effect: archive the flagged question or persist the not-duplicate decision
     if (resolution === 'archive_a') {
       await prisma.question.update({
         where: { id: aId },
@@ -154,6 +154,14 @@ app.post(
       await prisma.question.update({
         where: { id: bId },
         data: { status: 'ARCHIVED', isHidden: true },
+      })
+    } else if (resolution === 'not_duplicate') {
+      // Persist permanently so future scans skip this pair (canonical: lower ID first)
+      const [ignoreA, ignoreB] = aId < bId ? [aId, bId] : [bId, aId]
+      await prisma.duplicateIgnore.upsert({
+        where: { aId_bId: { aId: ignoreA, bId: ignoreB } },
+        create: { aId: ignoreA, bId: ignoreB },
+        update: {},
       })
     }
 
@@ -190,12 +198,19 @@ app.post(
       data: { results: { pairs: updatedPairs } as any },
     })
 
-    // Side-effects: archive flagged questions
+    // Side-effects: archive flagged questions or persist not-duplicate decisions
     for (const pair of pairsToResolve) {
       if (resolution === 'archive_a') {
         await prisma.question.update({ where: { id: pair.aId }, data: { status: 'ARCHIVED', isHidden: true } }).catch(() => {})
       } else if (resolution === 'archive_b') {
         await prisma.question.update({ where: { id: pair.bId }, data: { status: 'ARCHIVED', isHidden: true } }).catch(() => {})
+      } else if (resolution === 'not_duplicate') {
+        const [ignoreA, ignoreB] = pair.aId < pair.bId ? [pair.aId, pair.bId] : [pair.bId, pair.aId]
+        await prisma.duplicateIgnore.upsert({
+          where: { aId_bId: { aId: ignoreA, bId: ignoreB } },
+          create: { aId: ignoreA, bId: ignoreB },
+          update: {},
+        }).catch(() => {})
       }
     }
 

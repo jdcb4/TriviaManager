@@ -147,6 +147,17 @@ model AiTask {
   @@index([status])
 }
 
+model DuplicateIgnore {
+  id        String   @id @default(uuid())
+  aId       String
+  bId       String
+  createdAt DateTime @default(now())
+
+  @@unique([aId, bId])
+  @@index([aId])
+  @@index([bId])
+}
+
 model DuplicateScan {
   id             String    @id @default(uuid())
   status         String    @default("running") // running | done | failed | cancelled

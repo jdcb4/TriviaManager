@@ -132,7 +132,11 @@ ${typeInstructions[body.type!]}`
           : `Example output for type ${body.type}:
 [${typeExamples[body.type!]}]`
 
-        const prompt = `Generate exactly ${body.count} trivia questions${body.category ? ` about ${body.category}` : ''} at ${body.difficulty ?? 'MEDIUM'} difficulty.
+        const difficultySection = body.difficulty
+          ? `at ${body.difficulty} difficulty`
+          : `at varied difficulty — spread the questions across EASY, MEDIUM, and HARD (roughly equal thirds). Each question must include a "difficulty" field set to "EASY", "MEDIUM", or "HARD".`
+
+        const prompt = `Generate exactly ${body.count} trivia questions${body.category ? ` about ${body.category}` : ''} ${difficultySection}.
 
 ${typeSection}
 ${body.instructions ? `\nAdditional instructions: ${body.instructions}` : ''}

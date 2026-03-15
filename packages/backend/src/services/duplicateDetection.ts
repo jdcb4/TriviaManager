@@ -115,6 +115,14 @@ export async function runDuplicateDetection(
 export async function runBulkDuplicateScan(
   onProgress: (scanned: number, total: number) => Promise<void>
 ): Promise<DuplicatePair[]> {
+  // Pre-load all permanently ignored pairs into a Set for O(1) lookup
+  const ignoreRecords = await prisma.duplicateIgnore.findMany({
+    select: { aId: true, bId: true },
+  })
+  const ignoredSet = new Set<string>(
+    ignoreRecords.map(r => `${r.aId}::${r.bId}`)
+  )
+
   const questions = await prisma.question.findMany({
     where: { status: { in: ['ACTIVE', 'FLAGGED'] } },
     select: { id: true, text: true },
@@ -143,6 +151,10 @@ export async function runBulkDuplicateScan(
 
     for (let j = i + 1; j < processed.length; j++) {
       const b = processed[j]
+
+      // Skip permanently ignored pairs (canonical key: lower ID first)
+      const ignoreKey = a.id < b.id ? `${a.id}::${b.id}` : `${b.id}::${a.id}`
+      if (ignoredSet.has(ignoreKey)) continue
 
       // Layer 1: exact hash
       if (a.hash === b.hash) {
