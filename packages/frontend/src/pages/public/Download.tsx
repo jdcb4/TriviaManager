@@ -1,13 +1,29 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { Link } from 'react-router-dom'
-import { FileJson, FileSpreadsheet, Database, ArrowLeft, Book, FileDown } from 'lucide-react'
+import { FileJson, FileSpreadsheet, Database, ArrowLeft, Book, FileDown, AlertCircle } from 'lucide-react'
 
 export default function Download() {
   const { data: version } = useQuery({
     queryKey: ['dataset-version'],
     queryFn: () => api.get('/api/dataset-version').then(r => r.data),
   })
+
+  // Check SQLite availability (503 = binary unavailable, anything else = ok to try)
+  const { data: sqliteStatus } = useQuery({
+    queryKey: ['sqlite-status'],
+    queryFn: async () => {
+      try {
+        const res = await fetch('/api/downloads/sqlite', { method: 'HEAD' })
+        return res.status === 503 ? 'unavailable' : 'available'
+      } catch {
+        return 'available' // don't block UI on network error
+      }
+    },
+    staleTime: 60_000,
+  })
+
+  const sqliteUnavailable = sqliteStatus === 'unavailable'
 
   const files = [
     {
@@ -16,6 +32,7 @@ export default function Download() {
       href: '/api/downloads/json',
       icon: FileJson,
       ext: '.json',
+      unavailable: false,
     },
     {
       label: 'CSV',
@@ -23,6 +40,7 @@ export default function Download() {
       href: '/api/downloads/csv',
       icon: FileSpreadsheet,
       ext: '.csv',
+      unavailable: false,
     },
     {
       label: 'SQLite',
@@ -30,6 +48,7 @@ export default function Download() {
       href: '/api/downloads/sqlite',
       icon: Database,
       ext: '.db',
+      unavailable: sqliteUnavailable,
     },
   ]
 
@@ -66,18 +85,39 @@ export default function Download() {
         </div>
 
         <div className="space-y-3">
-          {files.map(({ label, description, href, icon: Icon, ext }) => (
-            <a
-              key={label}
-              href={href}
-              className="flex items-start gap-4 p-4 border rounded-xl hover:bg-gray-50 transition-colors group"
-            >
-              <Icon size={24} className="text-indigo-500 mt-0.5 shrink-0" />
-              <div className="flex-1">
-                <p className="font-semibold text-gray-900 group-hover:text-indigo-700">{label} <span className="font-normal text-gray-400 text-sm">{ext}</span></p>
-                <p className="text-sm text-gray-500 mt-0.5">{description}</p>
+          {files.map(({ label, description, href, icon: Icon, ext, unavailable }) => (
+            unavailable ? (
+              <div
+                key={label}
+                className="flex items-start gap-4 p-4 border rounded-xl border-dashed bg-gray-50 opacity-60"
+              >
+                <Icon size={24} className="text-gray-400 mt-0.5 shrink-0" />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-gray-500">{label} <span className="font-normal text-gray-400 text-sm">{ext}</span></p>
+                    <span className="flex items-center gap-1 text-xs text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
+                      <AlertCircle size={10} />Unavailable
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-400 mt-0.5">{description}</p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    The native binary for this format could not be compiled on the current deployment platform.
+                  </p>
+                </div>
               </div>
-            </a>
+            ) : (
+              <a
+                key={label}
+                href={href}
+                className="flex items-start gap-4 p-4 border rounded-xl hover:bg-gray-50 transition-colors group"
+              >
+                <Icon size={24} className="text-indigo-500 mt-0.5 shrink-0" />
+                <div className="flex-1">
+                  <p className="font-semibold text-gray-900 group-hover:text-indigo-700">{label} <span className="font-normal text-gray-400 text-sm">{ext}</span></p>
+                  <p className="text-sm text-gray-500 mt-0.5">{description}</p>
+                </div>
+              </a>
+            )
           ))}
         </div>
 
