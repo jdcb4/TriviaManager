@@ -123,13 +123,13 @@ MULTIPLE_CHOICE: ${typeInstructions.MULTIPLE_CHOICE}
 
 MULTIPLE_ANSWER: ${typeInstructions.MULTIPLE_ANSWER}`
           : `QUESTION TYPE: ${body.type}
-${typeInstructions[body.type]}`
+${typeInstructions[body.type!]}`
 
         const exampleSection = isMixed
           ? `Example objects (one per type):
 [${typeExamples.STANDARD}, ${typeExamples.MULTIPLE_CHOICE}, ${typeExamples.MULTIPLE_ANSWER}]`
           : `Example output for type ${body.type}:
-[${typeExamples[body.type]}]`
+[${typeExamples[body.type!]}]`
 
         const prompt = `Generate exactly ${body.count} trivia questions${body.category ? ` about ${body.category}` : ''} at ${body.difficulty ?? 'MEDIUM'} difficulty.
 
