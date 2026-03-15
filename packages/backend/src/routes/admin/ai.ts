@@ -4,6 +4,7 @@ import { zValidator } from '@hono/zod-validator'
 import { prisma } from '../../lib/prisma.js'
 import { openrouterChat } from '../../services/openrouter.js'
 import { runDuplicateDetection } from '../../services/duplicateDetection.js'
+import { normalizeCategory } from '../../lib/categories.js'
 
 const app = new Hono()
 
@@ -173,7 +174,7 @@ ${exampleSection}`
             }
           }
 
-          return { ...q, type: qType }
+          return { ...q, type: qType, category: normalizeCategory(q.category) }
         })
 
         // Calculate points per question based on its own type

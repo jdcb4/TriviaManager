@@ -41,7 +41,7 @@ function StagedCard({ item, onApprove, onReject, onUpdateData }: {
               {localData.answers.filter((a: any) => a.isCorrect).map((a: any) => a.text).join(' · ')}
             </p>
           )}
-          <div className="flex gap-2 mt-2">
+          <div className="flex items-center gap-2 mt-2 flex-wrap">
             <Select
               value={localData.difficulty ?? ''}
               onChange={e => updateField('difficulty', e.target.value)}
@@ -58,6 +58,11 @@ function StagedCard({ item, onApprove, onReject, onUpdateData }: {
               <option value="">Category</option>
               {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
             </Select>
+            {localData.points != null && (
+              <span className="text-xs text-gray-400 whitespace-nowrap">
+                {localData.points} {localData.points === 1 ? 'pt' : 'pts'}
+              </span>
+            )}
           </div>
         </div>
         <button onClick={() => setExpanded(e => !e)} className="text-gray-400 hover:text-gray-600 mt-1 shrink-0">
