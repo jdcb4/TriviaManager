@@ -381,7 +381,17 @@ export default function QuestionList() {
                     <p className="line-clamp-2 text-gray-900">{q.text}</p>
                     {q.answers.length > 0 && (
                       <p className="text-xs text-gray-400 mt-0.5 truncate">
-                        {q.answers.filter(a => a.isCorrect).map(a => a.text).join(' · ')}
+                        {q.type === 'MULTIPLE_CHOICE'
+                          ? q.answers.map((a, i) => (
+                              <span key={i}>
+                                {i > 0 && ' · '}
+                                {a.isCorrect
+                                  ? <strong className="font-semibold text-gray-600">{a.text}</strong>
+                                  : a.text}
+                              </span>
+                            ))
+                          : q.answers.filter(a => a.isCorrect).map(a => a.text).join(' · ')
+                        }
                       </p>
                     )}
                   </td>
