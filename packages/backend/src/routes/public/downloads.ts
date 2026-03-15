@@ -13,7 +13,15 @@ const app = new Hono()
 // Check that a published version exists, then ensure the file is on disk.
 // If the file is missing (e.g. after a container restart wipes the filesystem),
 // regenerate it on the fly from the database before serving.
-async function getOrGenerateFile(filename: string): Promise<Uint8Array | null> {
+// Convert a Node.js Buffer (Uint8Array<ArrayBufferLike>) to a plain ArrayBuffer.
+// ArrayBuffer is a concrete BodyInit type and works in all TS versions.
+function toArrayBuffer(buf: Buffer): ArrayBuffer {
+  const ab = new ArrayBuffer(buf.length)
+  new Uint8Array(ab).set(buf)
+  return ab
+}
+
+async function getOrGenerateFile(filename: string): Promise<ArrayBuffer | null> {
   // Guard: only serve if at least one published version exists
   const latestVersion = await prisma.datasetVersion.findFirst({
     where: { publishedAt: { not: null } },
@@ -24,7 +32,7 @@ async function getOrGenerateFile(filename: string): Promise<Uint8Array | null> {
   const filePath = path.join(DOWNLOADS_DIR, filename)
 
   try {
-    return new Uint8Array(await fs.readFile(filePath))
+    return toArrayBuffer(await fs.readFile(filePath))
   } catch {
     // File missing (container restart resets the filesystem) — regenerate from DB
     const questions = await prisma.question.findMany({
@@ -33,7 +41,7 @@ async function getOrGenerateFile(filename: string): Promise<Uint8Array | null> {
       orderBy: { id: 'asc' },
     })
     await generateDatasetFiles(questions as any)
-    return new Uint8Array(await fs.readFile(filePath))
+    return toArrayBuffer(await fs.readFile(filePath))
   }
 }
 
@@ -42,7 +50,7 @@ async function serveDownload(c: any, filename: string, contentType: string) {
   if (!data) {
     return c.json({ error: 'No published dataset yet. An admin must publish the dataset first.' }, 404)
   }
-  return new Response(new Blob([data]), {
+  return new Response(data, {
     headers: {
       'Content-Type': contentType,
       'Content-Disposition': `attachment; filename="${filename}"`,
