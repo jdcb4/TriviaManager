@@ -5,6 +5,7 @@ import { api, type Question, type Answer, type QuestionType, type Difficulty, ty
 import { Button } from '@/components/ui/button'
 import { Input, Select, Textarea } from '@/components/ui/input'
 import { typeLabel } from '@/lib/utils'
+import { CATEGORIES } from '@/lib/categories'
 import { Plus, Trash2, ArrowLeft } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -142,15 +143,10 @@ export default function QuestionEdit() {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-            <Input
-              list="categories"
-              value={form.category}
-              onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
-              placeholder="e.g. Science"
-            />
-            <datalist id="categories">
-              {meta?.categories?.map((c: any) => <option key={c.name} value={c.name} />)}
-            </datalist>
+            <Select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
+              <option value="">— None —</option>
+              {CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+            </Select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Sub-category</label>

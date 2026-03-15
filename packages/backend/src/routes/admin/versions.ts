@@ -47,10 +47,16 @@ app.post('/publish', zValidator('json', z.object({ notes: z.string().optional() 
     data: { checksum, questionCount: questions.length, notes, publishedAt: new Date() },
   })
 
-  // Generate flat files
-  await generateDatasetFiles(questions)
+  // Generate flat files — errors are non-fatal (version record already saved)
+  let fileWarning: string | undefined
+  try {
+    await generateDatasetFiles(questions as any)
+  } catch (err: any) {
+    fileWarning = err.message ?? 'Unknown file generation error'
+    console.error('[publish] generateDatasetFiles failed:', fileWarning)
+  }
 
-  return c.json(version, 201)
+  return c.json({ ...version, ...(fileWarning && { warning: fileWarning }) }, 201)
 })
 
 export default app

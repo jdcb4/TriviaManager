@@ -26,25 +26,39 @@ const questionSchema = z.object({
 })
 
 const listQuerySchema = z.object({
-  type: z.enum(['STANDARD', 'MULTIPLE_CHOICE', 'MULTIPLE_ANSWER']).optional(),
+  // Single-value filters (kept for public API compat)
+  type: z.string().optional(),
   category: z.string().optional(),
-  difficulty: z.enum(['EASY', 'MEDIUM', 'HARD']).optional(),
-  status: z.enum(['ACTIVE', 'STAGED', 'ARCHIVED', 'FLAGGED']).optional(),
+  difficulty: z.string().optional(),
+  status: z.string().optional(),
   collection: z.string().optional(),
+  // Multi-value filters (comma-separated)
+  types: z.string().optional(),
+  categories: z.string().optional(),
+  difficulties: z.string().optional(),
+  statuses: z.string().optional(),
   search: z.string().optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(200).default(50),
+  sortBy: z.enum(['createdAt', 'updatedAt', 'text', 'category', 'difficulty', 'status']).default('createdAt'),
+  sortDir: z.enum(['asc', 'desc']).default('desc'),
 })
 
 // List all questions (admin sees all statuses)
 app.get('/', zValidator('query', listQuerySchema), async (c) => {
-  const { type, category, difficulty, status, collection, search, page, limit } = c.req.valid('query')
+  const { type, category, difficulty, status, collection, types, categories, difficulties, statuses, search, page, limit, sortBy, sortDir } = c.req.valid('query')
+
+  // Merge single + multi-value filters (multi-value wins if both provided)
+  const typeList = types ? types.split(',').filter(Boolean) : type ? [type] : []
+  const categoryList = categories ? categories.split(',').filter(Boolean) : category ? [category] : []
+  const difficultyList = difficulties ? difficulties.split(',').filter(Boolean) : difficulty ? [difficulty] : []
+  const statusList = statuses ? statuses.split(',').filter(Boolean) : status ? [status] : []
 
   const where: any = {
-    ...(type && { type }),
-    ...(category && { category }),
-    ...(difficulty && { difficulty }),
-    ...(status && { status }),
+    ...(typeList.length === 1 ? { type: typeList[0] } : typeList.length > 1 ? { type: { in: typeList } } : {}),
+    ...(categoryList.length === 1 ? { category: categoryList[0] } : categoryList.length > 1 ? { category: { in: categoryList } } : {}),
+    ...(difficultyList.length === 1 ? { difficulty: difficultyList[0] } : difficultyList.length > 1 ? { difficulty: { in: difficultyList } } : {}),
+    ...(statusList.length === 1 ? { status: statusList[0] } : statusList.length > 1 ? { status: { in: statusList } } : {}),
     ...(collection && { collection }),
     ...(search && { text: { contains: search, mode: 'insensitive' } }),
   }
@@ -54,7 +68,7 @@ app.get('/', zValidator('query', listQuerySchema), async (c) => {
     prisma.question.findMany({
       where,
       include: { answers: { orderBy: { order: 'asc' } } },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { [sortBy]: sortDir },
       skip: (page - 1) * limit,
       take: limit,
     }),
@@ -176,6 +190,40 @@ app.delete('/:id', async (c) => {
   await prisma.question.delete({ where: { id } }).catch(() => null)
   return c.json({ success: true })
 })
+
+// Bulk update questions
+app.post(
+  '/bulk-update',
+  zValidator('json', z.object({
+    ids: z.array(z.string()).min(1),
+    updates: z.object({
+      difficulty: z.enum(['EASY', 'MEDIUM', 'HARD']).optional(),
+      status: z.enum(['ACTIVE', 'STAGED', 'ARCHIVED', 'FLAGGED']).optional(),
+      category: z.string().nullable().optional(),
+      collection: z.string().nullable().optional(),
+    }),
+  })),
+  async (c) => {
+    const { ids, updates } = c.req.valid('json')
+
+    const data: any = {}
+    if (updates.difficulty !== undefined) data.difficulty = updates.difficulty
+    if (updates.status !== undefined) data.status = updates.status
+    if (updates.category !== undefined) data.category = updates.category
+    if (updates.collection !== undefined) data.collection = updates.collection
+
+    if (Object.keys(data).length === 0) {
+      return c.json({ error: 'No fields to update' }, 400)
+    }
+
+    const result = await prisma.question.updateMany({
+      where: { id: { in: ids } },
+      data,
+    })
+
+    return c.json({ updated: result.count })
+  }
+)
 
 // Run duplicate detection for a question
 app.get('/:id/duplicates', async (c) => {

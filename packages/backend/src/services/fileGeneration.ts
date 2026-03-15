@@ -63,52 +63,58 @@ export async function generateDatasetFiles(questions: Question[]): Promise<void>
   const csv = stringify(csvRows, { header: true })
   await fs.writeFile(path.join(DOWNLOADS_DIR, 'questions.csv'), csv, 'utf-8')
 
-  // SQLite
-  const dbPath = path.join(DOWNLOADS_DIR, 'questions.db')
-  try { await fs.unlink(dbPath) } catch {}
-  const db = new Database(dbPath)
+  // SQLite — wrapped in try/catch; better-sqlite3 requires a compiled native binary.
+  // If the binary isn't available (e.g. missing build tools in Docker) we log a warning
+  // and skip SQLite output rather than crashing the whole publish.
+  try {
+    const dbPath = path.join(DOWNLOADS_DIR, 'questions.db')
+    try { await fs.unlink(dbPath) } catch {}
+    const db = new Database(dbPath)
 
-  db.exec(`
-    CREATE TABLE questions (
-      id TEXT PRIMARY KEY,
-      text TEXT NOT NULL,
-      type TEXT NOT NULL,
-      points INTEGER NOT NULL,
-      difficulty TEXT NOT NULL,
-      category TEXT,
-      sub_category TEXT,
-      collection TEXT
-    );
-    CREATE TABLE answers (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      question_id TEXT NOT NULL,
-      text TEXT NOT NULL,
-      is_correct INTEGER NOT NULL,
-      "order" INTEGER NOT NULL,
-      FOREIGN KEY (question_id) REFERENCES questions(id)
-    );
-    CREATE INDEX idx_answers_question ON answers(question_id);
-    CREATE INDEX idx_questions_category ON questions(category);
-    CREATE INDEX idx_questions_difficulty ON questions(difficulty);
-    CREATE INDEX idx_questions_type ON questions(type);
-  `)
+    db.exec(`
+      CREATE TABLE questions (
+        id TEXT PRIMARY KEY,
+        text TEXT NOT NULL,
+        type TEXT NOT NULL,
+        points INTEGER NOT NULL,
+        difficulty TEXT NOT NULL,
+        category TEXT,
+        sub_category TEXT,
+        collection TEXT
+      );
+      CREATE TABLE answers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        question_id TEXT NOT NULL,
+        text TEXT NOT NULL,
+        is_correct INTEGER NOT NULL,
+        "order" INTEGER NOT NULL,
+        FOREIGN KEY (question_id) REFERENCES questions(id)
+      );
+      CREATE INDEX idx_answers_question ON answers(question_id);
+      CREATE INDEX idx_questions_category ON questions(category);
+      CREATE INDEX idx_questions_difficulty ON questions(difficulty);
+      CREATE INDEX idx_questions_type ON questions(type);
+    `)
 
-  const insertQ = db.prepare(
-    'INSERT INTO questions VALUES (?,?,?,?,?,?,?,?)'
-  )
-  const insertA = db.prepare(
-    'INSERT INTO answers (question_id, text, is_correct, "order") VALUES (?,?,?,?)'
-  )
+    const insertQ = db.prepare(
+      'INSERT INTO questions VALUES (?,?,?,?,?,?,?,?)'
+    )
+    const insertA = db.prepare(
+      'INSERT INTO answers (question_id, text, is_correct, "order") VALUES (?,?,?,?)'
+    )
 
-  const insertAll = db.transaction((qs: Question[]) => {
-    for (const q of qs) {
-      insertQ.run(q.id, q.text, q.type, q.points, q.difficulty, q.category, q.subCategory, q.collection)
-      for (const a of q.answers) {
-        insertA.run(q.id, a.text, a.isCorrect ? 1 : 0, a.order)
+    const insertAll = db.transaction((qs: Question[]) => {
+      for (const q of qs) {
+        insertQ.run(q.id, q.text, q.type, q.points, q.difficulty, q.category, q.subCategory, q.collection)
+        for (const a of q.answers) {
+          insertA.run(q.id, a.text, a.isCorrect ? 1 : 0, a.order)
+        }
       }
-    }
-  })
+    })
 
-  insertAll(questions)
-  db.close()
+    insertAll(questions)
+    db.close()
+  } catch (sqliteErr: any) {
+    console.warn('[fileGeneration] SQLite export skipped (native binary unavailable?):', sqliteErr.message)
+  }
 }

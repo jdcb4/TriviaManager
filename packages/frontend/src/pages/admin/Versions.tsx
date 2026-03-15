@@ -22,11 +22,19 @@ export default function Versions() {
       if (res.data.message?.includes('No changes')) {
         toast('No changes since last publish', { icon: 'ℹ️' })
       } else {
-        toast.success(`Published v${res.data.version}`)
+        if (res.data.warning) {
+          toast.success(`Published v${res.data.version}`)
+          toast(`⚠️ File generation issue: ${res.data.warning}`, { duration: 8000 })
+        } else {
+          toast.success(`Published v${res.data.version} — download files regenerated`)
+        }
         setNotes('')
       }
     },
-    onError: () => toast.error('Publish failed'),
+    onError: (e: any) => {
+      const detail = e.response?.data?.error ?? e.message ?? 'Unknown error'
+      toast.error(`Publish failed: ${detail}`, { duration: 6000 })
+    },
   })
 
   return (
