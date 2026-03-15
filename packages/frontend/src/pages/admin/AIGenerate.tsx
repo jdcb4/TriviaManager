@@ -4,13 +4,24 @@ import { api } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Input, Select, Textarea } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { CATEGORIES } from '@/lib/categories'
 import { Bot, CheckCircle, XCircle, Clock } from 'lucide-react'
 import toast from 'react-hot-toast'
 
+type ModelInfo = { id: string; name: string; category: string; cost: string; provider: string }
+
+const CATEGORY_ORDER = ['Frontier', 'Balanced', 'Speed', 'Budget']
+
+const CATEGORY_COLORS: Record<string, string> = {
+  Frontier: 'text-purple-600',
+  Balanced: 'text-indigo-600',
+  Speed:    'text-blue-600',
+  Budget:   'text-green-600',
+}
+
 export default function AIGenerate() {
-  const hasKey = !!import.meta.env.VITE_HAS_OPENROUTER // just a hint; backend validates
   const [form, setForm] = useState({
-    model: 'openai/gpt-4o-mini',
+    model: 'anthropic/claude-sonnet-4.6',
     count: 5,
     category: '',
     difficulty: '' as '' | 'EASY' | 'MEDIUM' | 'HARD',
@@ -20,7 +31,7 @@ export default function AIGenerate() {
 
   const { data: models } = useQuery({
     queryKey: ['ai-models'],
-    queryFn: () => api.get('/api/admin/ai/models').then(r => r.data as string[]),
+    queryFn: () => api.get('/api/admin/ai/models').then(r => r.data as ModelInfo[]),
   })
 
   const { data: tasks, refetch: refetchTasks } = useQuery({
@@ -40,6 +51,20 @@ export default function AIGenerate() {
     onError: (e: any) => toast.error(e.response?.data?.error ?? 'Failed'),
   })
 
+  // Group models by category in defined order; within each group sort by provider then cost desc
+  const parseCost = (s: string) => parseFloat(s.replace(/[^0-9.]/g, '')) || 0
+  const groupedModels = CATEGORY_ORDER.map(cat => ({
+    category: cat,
+    models: (models ?? [])
+      .filter(m => m.category === cat)
+      .sort((a, b) => {
+        if (a.provider !== b.provider) return a.provider.localeCompare(b.provider)
+        return parseCost(b.cost) - parseCost(a.cost)
+      }),
+  })).filter(g => g.models.length > 0)
+
+  const selectedModel = models?.find(m => m.id === form.model)
+
   return (
     <div className="p-6 space-y-6 max-w-2xl">
       <div className="flex items-center gap-2">
@@ -51,23 +76,42 @@ export default function AIGenerate() {
         <h2 className="font-semibold text-gray-800">Generate Questions</h2>
 
         <div className="grid grid-cols-2 gap-3">
-          <div>
+          <div className="col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-1">Model</label>
-            <Select value={form.model} onChange={e => setForm(f => ({ ...f, model: e.target.value }))}>
-              {(models ?? [form.model]).map(m => <option key={m} value={m}>{m}</option>)}
+            <Select
+              value={form.model}
+              onChange={e => setForm(f => ({ ...f, model: e.target.value }))}
+              className="w-full"
+            >
+              {models
+                ? groupedModels.map(({ category, models: catModels }) => (
+                    <optgroup key={category} label={`── ${category} ──`}>
+                      {catModels.map(m => (
+                        <option key={m.id} value={m.id}>
+                          {m.name}  ·  {m.cost}  ({m.provider})
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))
+                : <option value={form.model}>{form.model}</option>
+              }
             </Select>
+            {selectedModel && (
+              <div className="flex items-center gap-2 mt-1.5">
+                <span className={`text-xs font-medium ${CATEGORY_COLORS[selectedModel.category] ?? 'text-gray-500'}`}>
+                  {selectedModel.category}
+                </span>
+                <span className="text-xs text-gray-400">·</span>
+                <span className="text-xs text-gray-500">{selectedModel.provider}</span>
+                <span className="text-xs text-gray-400">·</span>
+                <span className="text-xs font-mono text-gray-600">{selectedModel.cost} output</span>
+              </div>
+            )}
           </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Count</label>
             <Input type="number" min={1} max={20} value={form.count} onChange={e => setForm(f => ({ ...f, count: Number(e.target.value) }))} />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-            <Select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value as any }))}>
-              <option value="STANDARD">Standard</option>
-              <option value="MULTIPLE_CHOICE">Multiple Choice</option>
-              <option value="MULTIPLE_ANSWER">Multiple Answer</option>
-            </Select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Difficulty</label>
@@ -78,11 +122,21 @@ export default function AIGenerate() {
               <option value="HARD">Hard</option>
             </Select>
           </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Category (optional)</label>
-          <Input value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} placeholder="e.g. Science, History, Pop Culture" />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+            <Select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value as any }))}>
+              <option value="STANDARD">Standard</option>
+              <option value="MULTIPLE_CHOICE">Multiple Choice</option>
+              <option value="MULTIPLE_ANSWER">Multiple Answer</option>
+            </Select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+            <Select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
+              <option value="">Any category</option>
+              {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+            </Select>
+          </div>
         </div>
 
         <div>
@@ -110,9 +164,11 @@ export default function AIGenerate() {
                   task.status === 'failed' ? <XCircle size={16} className="text-red-500 mt-0.5" /> :
                   <Clock size={16} className="text-yellow-500 mt-0.5 animate-spin" />}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <Badge variant="secondary">{task.type}</Badge>
-                    <span className="text-gray-500 text-xs">{task.model}</span>
+                    <span className="text-gray-500 text-xs">
+                      {models?.find(m => m.id === task.model)?.name ?? task.model}
+                    </span>
                     <span className="text-gray-400 text-xs">{new Date(task.createdAt).toLocaleTimeString()}</span>
                   </div>
                   {task.error && <p className="text-red-600 text-xs mt-0.5">{task.error}</p>}

@@ -40,7 +40,7 @@ const listQuerySchema = z.object({
   search: z.string().optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(200).default(50),
-  sortBy: z.enum(['createdAt', 'updatedAt', 'text', 'category', 'difficulty', 'status']).default('createdAt'),
+  sortBy: z.enum(['createdAt', 'updatedAt', 'text', 'category', 'difficulty', 'status', 'type']).default('createdAt'),
   sortDir: z.enum(['asc', 'desc']).default('desc'),
 })
 

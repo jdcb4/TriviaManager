@@ -7,38 +7,34 @@ import { runDuplicateDetection } from '../../services/duplicateDetection.js'
 
 const app = new Hono()
 
-const MODELS = [
-  // OpenAI
-  'openai/gpt-4o-mini',
-  'openai/gpt-4o',
-  'openai/o3-mini',
-  // Anthropic
-  'anthropic/claude-3-5-haiku',
-  'anthropic/claude-3-7-sonnet',
-  'anthropic/claude-3-opus',
-  // Google Gemini (current generation)
-  'google/gemini-2.5-pro-preview',
-  'google/gemini-2.5-flash-preview',
-  'google/gemini-2.0-flash',
-  'google/gemini-2.0-flash-lite',
-  // DeepSeek
-  'deepseek/deepseek-chat',
-  'deepseek/deepseek-r1',
-  'deepseek/deepseek-r1-distill-llama-70b',
-  // Qwen
-  'qwen/qwen-2.5-72b-instruct',
-  'qwen/qwq-32b',
-  'qwen/qwen-turbo',
-  // Meta
-  'meta-llama/llama-3.3-70b-instruct',
-  'meta-llama/llama-3.1-8b-instruct',
-  // Mistral
-  'mistral/mistral-large-2411',
-  'mistral/mistral-small-3.1-24b-instruct',
+type ModelInfo = { id: string; name: string; category: string; cost: string; provider: string }
+
+const MODEL_CATALOG: ModelInfo[] = [
+  // Frontier
+  { id: 'anthropic/claude-opus-4.6',     name: 'Claude Opus 4.6',        category: 'Frontier', cost: '$25/1M',   provider: 'Anthropic' },
+  { id: 'openai/gpt-5.4',                name: 'GPT-5.4',                category: 'Frontier', cost: '$15/1M',   provider: 'OpenAI'    },
+  { id: 'google/gemini-3-pro-preview',   name: 'Gemini 3 Pro Preview',   category: 'Frontier', cost: '$12/1M',   provider: 'Google'    },
+  // Balanced
+  { id: 'anthropic/claude-sonnet-4.6',   name: 'Claude Sonnet 4.6',      category: 'Balanced', cost: '$15/1M',   provider: 'Anthropic' },
+  { id: 'anthropic/claude-sonnet-4.5',   name: 'Claude Sonnet 4.5',      category: 'Balanced', cost: '$15/1M',   provider: 'Anthropic' },
+  { id: 'moonshotai/kimi-k2.5',          name: 'Kimi K2.5',              category: 'Balanced', cost: '$2.20/1M', provider: 'MoonshotAI'},
+  { id: 'openai/gpt-oss-120b',           name: 'GPT-OSS 120B',           category: 'Balanced', cost: '~$2/1M',   provider: 'OpenAI'    },
+  { id: 'x-ai/grok-4.1-fast',           name: 'Grok 4.1 Fast',          category: 'Balanced', cost: '$0.50/1M', provider: 'X-AI'      },
+  // Speed
+  { id: 'google/gemini-3-flash-preview', name: 'Gemini 3 Flash Preview', category: 'Speed',    cost: '$3/1M',    provider: 'Google'    },
+  { id: 'google/gemini-2.5-flash',       name: 'Gemini 2.5 Flash',       category: 'Speed',    cost: '$2.50/1M', provider: 'Google'    },
+  { id: 'google/gemini-2.5-flash-lite',  name: 'Gemini 2.5 Flash Lite',  category: 'Speed',    cost: '$0.40/1M', provider: 'Google'    },
+  { id: 'minimax/minimax-m2.5',          name: 'MiniMax M2.5',           category: 'Speed',    cost: '$0.95/1M', provider: 'MiniMax'   },
+  { id: 'openai/gpt-5-nano',             name: 'GPT-5 Nano',             category: 'Speed',    cost: '$0.40/1M', provider: 'OpenAI'    },
+  // Budget
+  { id: 'deepseek/deepseek-v3.2',        name: 'DeepSeek V3.2',          category: 'Budget',   cost: '$0.38/1M', provider: 'DeepSeek'  },
+  { id: 'qwen/qwen3.5-plus-02-15',       name: 'Qwen3.5 Plus',           category: 'Budget',   cost: '$1.56/1M', provider: 'Qwen'      },
+  { id: 'qwen/qwen3.5-flash-02-23',      name: 'Qwen3.5 Flash',          category: 'Budget',   cost: '$0.40/1M', provider: 'Qwen'      },
+  { id: 'z-ai/glm-5',                    name: 'Z.AI GLM-5',             category: 'Budget',   cost: '$2.30/1M', provider: 'Z.AI'      },
 ]
 
 app.get('/models', async (c) => {
-  return c.json(MODELS)
+  return c.json(MODEL_CATALOG)
 })
 
 app.get('/tasks', async (c) => {

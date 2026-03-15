@@ -13,7 +13,7 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-type SortField = 'createdAt' | 'updatedAt' | 'text' | 'category' | 'difficulty' | 'status'
+type SortField = 'createdAt' | 'updatedAt' | 'text' | 'category' | 'difficulty' | 'status' | 'type'
 
 // ---- Multi-select dropdown ----
 function MultiSelect({
@@ -359,7 +359,7 @@ export default function QuestionList() {
                   />
                 </th>
                 <SortTh field="text" label="Question" sortBy={sortBy} sortDir={sortDir} onSort={handleSort} />
-                <SortTh field="text" label="Type" sortBy={sortBy} sortDir={sortDir} onSort={() => {}} className="w-28" />
+                <SortTh field="type" label="Type" sortBy={sortBy} sortDir={sortDir} onSort={handleSort} className="w-28" />
                 <SortTh field="difficulty" label="Difficulty" sortBy={sortBy} sortDir={sortDir} onSort={handleSort} className="w-24" />
                 <SortTh field="status" label="Status" sortBy={sortBy} sortDir={sortDir} onSort={handleSort} className="w-24" />
                 <SortTh field="category" label="Category" sortBy={sortBy} sortDir={sortDir} onSort={handleSort} className="w-36" />
