@@ -54,7 +54,7 @@ app.post(
   '/generate',
   zValidator('json', z.object({
     model: z.string(),
-    count: z.number().int().min(1).max(20).default(5),
+    count: z.number().int().min(1).max(50).default(5),
     category: z.string().optional(),
     difficulty: z.enum(['EASY', 'MEDIUM', 'HARD']).optional(),
     type: z.enum(['STANDARD', 'MULTIPLE_CHOICE', 'MULTIPLE_ANSWER']).optional(),

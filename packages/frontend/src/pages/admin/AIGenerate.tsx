@@ -49,7 +49,10 @@ export default function AIGenerate() {
       type: form.type || undefined,
     }),
     onSuccess: () => { toast.success('Generation started — check tasks below'); refetchTasks() },
-    onError: (e: any) => toast.error(e.response?.data?.error ?? 'Failed'),
+    onError: (e: any) => {
+      const err = e.response?.data?.error
+      toast.error(typeof err === 'string' ? err : 'Generation failed — check count/model settings')
+    },
   })
 
   // Group models by category in defined order; within each group sort by provider then cost desc
@@ -112,7 +115,7 @@ export default function AIGenerate() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Count</label>
-            <Input type="number" min={1} max={20} value={form.count} onChange={e => setForm(f => ({ ...f, count: Number(e.target.value) }))} />
+            <Input type="number" min={1} max={50} value={form.count} onChange={e => setForm(f => ({ ...f, count: Number(e.target.value) }))} />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Difficulty</label>
