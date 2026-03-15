@@ -25,7 +25,7 @@ export default function AIGenerate() {
     count: 5,
     category: '',
     difficulty: '' as '' | 'EASY' | 'MEDIUM' | 'HARD',
-    type: 'STANDARD' as 'STANDARD' | 'MULTIPLE_CHOICE' | 'MULTIPLE_ANSWER',
+    type: '' as '' | 'STANDARD' | 'MULTIPLE_CHOICE' | 'MULTIPLE_ANSWER',
     instructions: '',
   })
 
@@ -46,6 +46,7 @@ export default function AIGenerate() {
       difficulty: form.difficulty || undefined,
       category: form.category || undefined,
       instructions: form.instructions || undefined,
+      type: form.type || undefined,
     }),
     onSuccess: () => { toast.success('Generation started — check tasks below'); refetchTasks() },
     onError: (e: any) => toast.error(e.response?.data?.error ?? 'Failed'),
@@ -125,6 +126,7 @@ export default function AIGenerate() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
             <Select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value as any }))}>
+              <option value="">Any type (mixed)</option>
               <option value="STANDARD">Standard</option>
               <option value="MULTIPLE_CHOICE">Multiple Choice</option>
               <option value="MULTIPLE_ANSWER">Multiple Answer</option>

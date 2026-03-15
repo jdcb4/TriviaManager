@@ -56,7 +56,7 @@ app.post(
     count: z.number().int().min(1).max(20).default(5),
     category: z.string().optional(),
     difficulty: z.enum(['EASY', 'MEDIUM', 'HARD']).optional(),
-    type: z.enum(['STANDARD', 'MULTIPLE_CHOICE', 'MULTIPLE_ANSWER']).default('STANDARD'),
+    type: z.enum(['STANDARD', 'MULTIPLE_CHOICE', 'MULTIPLE_ANSWER']).optional(),
     instructions: z.string().optional(),
   })),
   async (c) => {
@@ -95,10 +95,12 @@ app.post(
         }
 
         const typeExamples: Record<string, string> = {
-          STANDARD: `[{"text":"What is the capital of France?","answers":[{"text":"Paris","isCorrect":true,"order":0}],"category":"Geography","difficulty":"EASY"}]`,
-          MULTIPLE_CHOICE: `[{"text":"Which planet is the largest in our solar system?","answers":[{"text":"Jupiter","isCorrect":true,"order":0},{"text":"Saturn","isCorrect":false,"order":1},{"text":"Neptune","isCorrect":false,"order":2},{"text":"Mars","isCorrect":false,"order":3}],"category":"Science","difficulty":"EASY"}]`,
-          MULTIPLE_ANSWER: `[{"text":"Name 3 of the 5 oceans on Earth.","answers":[{"text":"Pacific","isCorrect":true,"order":0},{"text":"Atlantic","isCorrect":true,"order":1},{"text":"Indian","isCorrect":true,"order":2},{"text":"Arctic","isCorrect":true,"order":3},{"text":"Southern","isCorrect":true,"order":4}],"category":"Geography","difficulty":"MEDIUM"}]`,
+          STANDARD: `{"text":"What is the capital of France?","type":"STANDARD","answers":[{"text":"Paris","isCorrect":true,"order":0}],"category":"Geography","difficulty":"EASY"}`,
+          MULTIPLE_CHOICE: `{"text":"Which planet is the largest in our solar system?","type":"MULTIPLE_CHOICE","answers":[{"text":"Jupiter","isCorrect":true,"order":0},{"text":"Saturn","isCorrect":false,"order":1},{"text":"Neptune","isCorrect":false,"order":2},{"text":"Mars","isCorrect":false,"order":3}],"category":"Science","difficulty":"EASY"}`,
+          MULTIPLE_ANSWER: `{"text":"Name 3 of the 5 oceans on Earth.","type":"MULTIPLE_ANSWER","answers":[{"text":"Pacific","isCorrect":true,"order":0},{"text":"Atlantic","isCorrect":true,"order":1},{"text":"Indian","isCorrect":true,"order":2},{"text":"Arctic","isCorrect":true,"order":3},{"text":"Southern","isCorrect":true,"order":4}],"category":"Geography","difficulty":"MEDIUM"}`,
         }
+
+        const isMixed = !body.type
 
         // Random seed to encourage diverse outputs across requests
         const seed = Math.floor(Math.random() * 1_000_000)
@@ -111,22 +113,39 @@ app.post(
         ]
         const randomHint = randomHints[seed % randomHints.length]
 
+        const typeSection = isMixed
+          ? `QUESTION TYPES: Mixed — freely choose the best type for each question.
+Each question MUST include a "type" field set to one of: "STANDARD", "MULTIPLE_CHOICE", "MULTIPLE_ANSWER".
+
+STANDARD: ${typeInstructions.STANDARD}
+
+MULTIPLE_CHOICE: ${typeInstructions.MULTIPLE_CHOICE}
+
+MULTIPLE_ANSWER: ${typeInstructions.MULTIPLE_ANSWER}`
+          : `QUESTION TYPE: ${body.type}
+${typeInstructions[body.type]}`
+
+        const exampleSection = isMixed
+          ? `Example objects (one per type):
+[${typeExamples.STANDARD}, ${typeExamples.MULTIPLE_CHOICE}, ${typeExamples.MULTIPLE_ANSWER}]`
+          : `Example output for type ${body.type}:
+[${typeExamples[body.type]}]`
+
         const prompt = `Generate exactly ${body.count} trivia questions${body.category ? ` about ${body.category}` : ''} at ${body.difficulty ?? 'MEDIUM'} difficulty.
 
-QUESTION TYPE: ${body.type}
-${typeInstructions[body.type]}
+${typeSection}
 ${body.instructions ? `\nAdditional instructions: ${body.instructions}` : ''}
 
 VARIETY (seed ${seed}): ${randomHint} Generate diverse questions — avoid repeating the same subject or answer across the batch.
 
 Respond ONLY with a valid JSON array. Each element must have:
 - "text": the question text
+- "type": "STANDARD"|"MULTIPLE_CHOICE"|"MULTIPLE_ANSWER"
 - "answers": array of objects with "text" (string), "isCorrect" (boolean), "order" (number starting at 0)
 - "category": string
 - "difficulty": "EASY"|"MEDIUM"|"HARD"
 
-Example output for type ${body.type}:
-${typeExamples[body.type]}`
+${exampleSection}`
 
         const content = await openrouterChat(body.model, [{ role: 'user', content: prompt }])
 
@@ -135,11 +154,14 @@ ${typeExamples[body.type]}`
         if (!jsonMatch) throw new Error('No JSON array found in response')
         const generated = JSON.parse(jsonMatch[0]) as any[]
 
-        // Validate and fix structure per type
+        // Validate and fix structure per question type
         const validated = generated.map((q: any) => {
+          const qType: string = isMixed
+            ? (['STANDARD', 'MULTIPLE_CHOICE', 'MULTIPLE_ANSWER'].includes(q.type) ? q.type : 'STANDARD')
+            : body.type!
           const answers: any[] = Array.isArray(q.answers) ? q.answers : []
 
-          if (body.type === 'MULTIPLE_CHOICE') {
+          if (qType === 'MULTIPLE_CHOICE') {
             // Ensure exactly 4 answers with exactly 1 correct
             const hasExact4 = answers.length === 4
             const correctCount = answers.filter((a: any) => a.isCorrect).length
@@ -151,12 +173,12 @@ ${typeExamples[body.type]}`
             }
           }
 
-          return q
+          return { ...q, type: qType }
         })
 
-        // Calculate points per question
+        // Calculate points per question based on its own type
         function calcPoints(q: any): number {
-          if (body.type === 'MULTIPLE_ANSWER') {
+          if (q.type === 'MULTIPLE_ANSWER') {
             const m = (q.text as string).match(/name\s+(\d+)\s+of/i)
               || (q.text as string).match(/list\s+(\d+)\b/i)
               || (q.text as string).match(/give\s+(\d+)\b/i)
@@ -172,7 +194,7 @@ ${typeExamples[body.type]}`
           validated.map((q: any) =>
             prisma.stagedQuestion.create({
               data: {
-                data: { ...q, type: body.type, points: calcPoints(q) },
+                data: { ...q, points: calcPoints(q) },
                 source: 'ai_generated',
                 status: 'PENDING',
                 aiNotes: `Generated by ${body.model}`,
