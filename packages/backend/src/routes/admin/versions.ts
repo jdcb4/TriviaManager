@@ -34,7 +34,11 @@ app.post('/publish', zValidator('json', z.object({ notes: z.string().optional() 
   })
 
   // Compute checksum of sorted active questions
-  const canonical = JSON.stringify(questions.map(q => ({ id: q.id, text: q.text, answers: q.answers })))
+  const canonical = JSON.stringify(questions.map((q: { id: string; text: string; answers: unknown }) => ({
+    id: q.id,
+    text: q.text,
+    answers: q.answers,
+  })))
   const checksum = crypto.createHash('sha256').update(canonical).digest('hex')
 
   // Check if anything changed

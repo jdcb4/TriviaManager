@@ -120,7 +120,7 @@ export async function runBulkDuplicateScan(
     select: { aId: true, bId: true },
   })
   const ignoredSet = new Set<string>(
-    ignoreRecords.map(r => `${r.aId}::${r.bId}`)
+    ignoreRecords.map((r: { aId: string; bId: string }) => `${r.aId}::${r.bId}`)
   )
 
   const questions = await prisma.question.findMany({
@@ -131,7 +131,7 @@ export async function runBulkDuplicateScan(
   const total = questions.length
 
   // Pre-compute everything we need once per question
-  const processed = questions.map(q => {
+  const processed = questions.map((q: { id: string; text: string }) => {
     const norm = normalize(q.text)
     return {
       id: q.id,

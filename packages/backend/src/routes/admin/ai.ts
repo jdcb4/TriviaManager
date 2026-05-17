@@ -248,7 +248,7 @@ app.post(
       try {
         const prompt = `Given this trivia question, suggest values for any missing fields.
 Question: "${question.text}"
-Answers: ${question.answers.map(a => a.text).join(', ')}
+Answers: ${question.answers.map((a: { text: string }) => a.text).join(', ')}
 Current category: ${question.category ?? 'MISSING'}
 Current subCategory: ${question.subCategory ?? 'MISSING'}
 Current difficulty: ${question.difficulty}

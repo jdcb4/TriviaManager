@@ -2,8 +2,9 @@
 FROM node:22-alpine AS builder
 WORKDIR /app
 
-# Install pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
+# Install the project-pinned pnpm version. Avoid pnpm@latest changing
+# dependency build-script policy during Railway deploys.
+RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
 
 # Build tools needed for native modules (better-sqlite3)
 RUN apk add --no-cache python3 make g++
